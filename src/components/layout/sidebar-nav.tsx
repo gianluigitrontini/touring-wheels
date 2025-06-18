@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -38,7 +39,7 @@ export function SidebarNav() {
         
         return (
           <SidebarMenuItem key={item.label}>
-            <Link href={item.href} passHref legacyBehavior>
+            <Link href={item.href}>
               <SidebarMenuButton
                 className={cn(
                   "font-medium",
@@ -58,3 +59,4 @@ export function SidebarNav() {
     </SidebarMenu>
   );
 }
+
