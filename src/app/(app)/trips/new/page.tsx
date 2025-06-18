@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -8,26 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { GpxUpload } from "@/components/map/gpx-upload";
-import type { Trip } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
-
-// This is a client-side mock. In a real app, this would be a server action.
-async function saveTrip(tripData: Partial<Trip>): Promise<Trip> {
-  console.log("Saving trip:", tripData);
-  // Simulate API call
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const newTripId = Math.random().toString(36).substring(7);
-  // In a real app, you'd get the full trip object back from the server
-  return { 
-    id: newTripId, 
-    name: tripData.name || "Unnamed Trip", 
-    createdAt: new Date(), 
-    updatedAt: new Date(),
-    ...tripData 
-  } as Trip;
-}
+import { saveTripAction } from "@/lib/actions"; // Import the server action
+import type { Trip } from "@/lib/types";
 
 
 export default function NewTripPage() {
@@ -57,11 +43,18 @@ export default function NewTripPage() {
 
     setIsSaving(true);
     try {
-      const newTrip = await saveTrip({
+      // Use the server action to save the trip
+      const tripToSave: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'> = {
         name: tripName,
         description: tripDescription,
         gpxData: gpxData,
-      });
+        // Initialize optional fields if necessary, or let the server action handle defaults
+        parsedGpx: [], 
+        weatherWaypoints: [],
+        gearList: [],
+      };
+      const newTrip = await saveTripAction(tripToSave);
+      
       toast({
         title: "Trip Saved!",
         description: `Your trip "${newTrip.name}" has been created.`,
@@ -131,7 +124,7 @@ export default function NewTripPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isSaving} className="text-base px-6 py-3">
+            <Button type="submit" disabled={isSaving || !gpxData} className="text-base px-6 py-3">
               <Save className="mr-2 h-5 w-5" />
               {isSaving ? "Saving..." : "Save Trip & View Map"}
             </Button>
