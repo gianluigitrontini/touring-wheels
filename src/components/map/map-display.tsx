@@ -7,6 +7,7 @@ import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-
 import L, { LatLngExpression, LatLngBoundsExpression } from "leaflet";
 import GpxParser from "gpxparser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react"; // Import Loader2
 
 // Fix for default marker icons in Leaflet with bundlers like Webpack/Next.js
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -40,13 +41,15 @@ function FitBounds({ bounds }: { bounds: LatLngBoundsExpression | undefined }) {
 }
 
 export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayProps) {
+  const [isClientSide, setIsClientSide] = useState(false);
   const [parsedTrack, setParsedTrack] = useState<ParsedGpxTrack | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
 
-  // Generate a unique key for the MapContainer.
-  // This ensures that if MapDisplay is unmounted and remounted (e.g. tab switch),
-  // MapContainer is treated as a new instance, preventing initialization errors.
   const mapKey = useMemo(() => Date.now() + Math.random(), []);
+
+  useEffect(() => {
+    setIsClientSide(true);
+  }, []);
 
   useEffect(() => {
     if (gpxData) {
@@ -60,7 +63,6 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
           return;
         }
 
-        // For simplicity, using the first track
         const track = gpx.tracks[0];
         const points: LatLngExpression[] = track.points.map(p => [p.lat, p.lon] as LatLngExpression);
         
@@ -81,11 +83,18 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
       }
     } else {
       setParsedTrack(null);
-      setMapError(null); // No error if no data is provided intentionally
+      setMapError(null); 
     }
   }, [gpxData]);
 
-  const polylineColor = 'hsl(var(--primary))'; // Using primary color from CSS variables
+  if (!isClientSide) {
+    return (
+      <div className={`h-[500px] w-full flex items-center justify-center bg-muted rounded-lg ${className}`}>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2 text-muted-foreground">Initializing map display...</p>
+      </div>
+    );
+  }
 
   if (mapError) {
     return (
@@ -108,7 +117,6 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
     );
   }
   
-  // Default center and zoom if no track is loaded but waypoints might exist
   const defaultCenter: LatLngExpression = parsedTrack?.bounds ? L.latLngBounds(parsedTrack.points).getCenter() : [51.505, -0.09];
   const defaultZoom = parsedTrack?.bounds ? 13 : 5;
 
@@ -116,7 +124,7 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
   return (
     <div className={`h-[500px] w-full rounded-lg overflow-hidden shadow-md ${className}`}>
       <MapContainer
-        key={mapKey} // Add key here
+        key={mapKey} 
         center={defaultCenter} 
         zoom={defaultZoom} 
         scrollWheelZoom={true} 
@@ -128,7 +136,7 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
         />
         {parsedTrack && parsedTrack.points.length > 0 && (
           <>
-            <Polyline pathOptions={{ color: polylineColor, weight: 5 }} positions={parsedTrack.points} />
+            <Polyline pathOptions={{ color: 'hsl(var(--primary))', weight: 5 }} positions={parsedTrack.points} />
             <FitBounds bounds={parsedTrack.bounds} />
           </>
         )}
@@ -151,4 +159,3 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
     </div>
   );
 }
-
