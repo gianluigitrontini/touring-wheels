@@ -49,6 +49,8 @@ This document outlines the features implemented in the Touring Wheels applicatio
             - [x] Save daily notes
 - [x] Client-side mock deletion of trips from the list
 - [x] Sidebar links for "Planned" and "Completed" trips below "My Trips"
+- [x] **Full Trip Editing Functionality** (implement `/trips/[tripId]/edit` page for name, description, duration, GPX file. Daily notes are editable on the trip detail page.)
+
 
 ### Gear Library
 - [x] Gear Library Page (`/gear`)
@@ -103,7 +105,6 @@ This document outlines the features implemented in the Touring Wheels applicatio
 ### Core Functionality
 - [ ] **User Authentication & Authorization**
 - [ ] **Real Database Integration** (e.g., Firebase Firestore, Supabase, PostgreSQL)
-- [ ] **Full Trip Editing Functionality** (implement `/trips/[tripId]/edit` page for all fields like duration, notes, etc.)
 - [ ] **Persistent Image Uploads** (e.g., Firebase Storage, Cloudinary) instead of Data URIs / temporary client URLs
 - [ ] **Associate a specific Bike Model with a Trip**
 
