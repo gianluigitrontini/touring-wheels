@@ -31,7 +31,7 @@ export interface Trip {
   gpxData?: string; // Store raw GPX string
   parsedGpx?: { lat: number; lon: number }[]; // Parsed coordinates for map display
   weatherWaypoints?: Waypoint[];
-  gearList?: GearItem[]; // This seems like a general gear list, perhaps for planning
+  // gearList?: GearItem[]; // This was a bit ambiguous; selectedGearIds is the source of truth for trip-specific gear.
   selectedGearIds: string[]; // IDs of GearItems specifically selected for THIS trip
   bikeId?: string; // ID of the BikeModel used for THIS trip
   createdAt: Date;

@@ -1,15 +1,15 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Trash2, Edit3, ListChecks, Weight, Image as ImageIcon } from "lucide-react";
+import { PlusCircle, Trash2, Edit3, ListChecks, Weight, Image as ImageIcon, Loader2 } from "lucide-react";
 import type { GearItem } from "@/lib/types";
-import { GpxUpload } from "@/components/map/gpx-upload"; // Re-using for image upload concept
 import { useToast } from "@/hooks/use-toast";
-import Image from 'next/image'; // For displaying images
+import Image from 'next/image'; 
 import {
   Dialog,
   DialogContent,
@@ -17,20 +17,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
+import { getGearItemsAction } from "@/lib/actions"; // Import server action to fetch gear
 
-
-const initialMockGear: GearItem[] = [
-  { id: "g1", name: "2-Person Tent", weight: 2200, imageUrl: "https://placehold.co/150x150.png?text=Tent", notes: "MSR Hubba Hubba NX" },
-  { id: "g2", name: "Down Sleeping Bag (-5C)", weight: 950, imageUrl: "https://placehold.co/150x150.png?text=Bag", notes: "Rab Ascent 500" },
-  { id: "g3", name: "Bike Multi-tool", weight: 180, notes: "Crankbrothers M19" },
-  { id: "g4", name: "Water Filter", weight: 300, imageUrl: "https://placehold.co/150x150.png?text=Filter", notes: "Sawyer Squeeze" },
-];
+// The add, edit, delete server actions for gear are not yet implemented.
+// For now, these operations will be client-side only after fetching initial data.
 
 export default function GearPage() {
-  const [gearItems, setGearItems] = useState<GearItem[]>(initialMockGear);
+  const [gearItems, setGearItems] = useState<GearItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GearItem | null>(null);
   
@@ -41,6 +37,23 @@ export default function GearPage() {
   const [itemImageFile, setItemImageFile] = useState<File | null>(null);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchGear = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedGear = await getGearItemsAction();
+        setGearItems(fetchedGear);
+      } catch (error) {
+        console.error("Failed to fetch gear items:", error);
+        toast({ title: "Error Fetching Gear", description: "Could not load your gear library.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchGear();
+  }, [toast]);
+
 
   const resetForm = () => {
     setItemName("");
@@ -65,8 +78,8 @@ export default function GearPage() {
   };
 
   const handleImageUpload = (imageDataUrl: string, file: File) => {
-    setItemImage(imageDataUrl); // For preview
-    setItemImageFile(file); // For actual upload
+    setItemImage(imageDataUrl); 
+    setItemImageFile(file); 
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,29 +94,39 @@ export default function GearPage() {
         return;
     }
 
+    // TODO: Replace with server action for saving/updating gear
     const newItem: GearItem = {
-      id: editingItem ? editingItem.id : Math.random().toString(36).substring(7),
+      id: editingItem ? editingItem.id : Math.random().toString(36).substring(7), // Temporary ID generation
       name: itemName,
       weight: weightNum,
       notes: itemNotes,
-      // In a real app, itemImageFile would be uploaded and itemImage would be the URL
       imageUrl: itemImage || (itemImageFile ? URL.createObjectURL(itemImageFile) : undefined), 
     };
 
     if (editingItem) {
       setGearItems(gearItems.map(item => item.id === editingItem.id ? newItem : item));
-      toast({title: "Gear Item Updated", description: `${newItem.name} has been updated.`});
+      toast({title: "Gear Item Updated (Locally)", description: `${newItem.name} has been updated.`});
     } else {
       setGearItems([...gearItems, newItem]);
-      toast({title: "Gear Item Added", description: `${newItem.name} has been added to your library.`});
+      toast({title: "Gear Item Added (Locally)", description: `${newItem.name} has been added to your library.`});
     }
     setIsModalOpen(false);
     resetForm();
   };
 
   const handleDelete = (itemId: string) => {
+    // TODO: Replace with server action for deleting gear
     setGearItems(gearItems.filter(item => item.id !== itemId));
-    toast({title: "Gear Item Deleted"});
+    toast({title: "Gear Item Deleted (Locally)"});
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg text-muted-foreground">Loading gear library...</p>
+      </div>
+    );
   }
 
   return (
@@ -173,11 +196,11 @@ export default function GearPage() {
             </DialogHeader>
             <div className="grid gap-4 py-6">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="itemName" className="text-right">Name</Label>
+                <Label htmlFor="itemName" className="text-right">Name*</Label>
                 <Input id="itemName" value={itemName} onChange={e => setItemName(e.target.value)} className="col-span-3" placeholder="e.g., Waterproof Panniers" required />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="itemWeight" className="text-right">Weight (g)</Label>
+                <Label htmlFor="itemWeight" className="text-right">Weight (g)*</Label>
                 <Input id="itemWeight" type="number" value={itemWeight} onChange={e => setItemWeight(e.target.value)} className="col-span-3" placeholder="e.g., 1200" required />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -187,7 +210,6 @@ export default function GearPage() {
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label className="text-right pt-2">Image</Label>
                 <div className="col-span-3 space-y-2">
-                  {/* Simplified image upload - using GpxUpload component structure for concept */}
                   <Input type="file" accept="image/*" onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
