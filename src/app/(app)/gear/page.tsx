@@ -39,6 +39,7 @@ export default function GearPage() {
   const [itemImageFile, setItemImageFile] = useState<File | null>(null);
   const [itemType, setItemType] = useState<'item' | 'container'>('item');
   const [itemCategory, setItemCategory] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [itemAiHint, setItemAiHint] = useState("");
 
   const { toast } = useToast();
@@ -73,6 +74,7 @@ export default function GearPage() {
     setEditingItem(null);
     setItemType("item");
     setItemCategory("");
+    setNewCategoryName("");
     setItemAiHint("");
   };
 
@@ -85,6 +87,7 @@ export default function GearPage() {
       setItemImage(item.imageUrl || null);
       setItemType(item.itemType || "item");
       setItemCategory(item.category || "");
+      setNewCategoryName("");
       setItemAiHint(item["data-ai-hint"] || "");
     } else {
       resetForm();
@@ -109,13 +112,15 @@ export default function GearPage() {
         return;
     }
 
+    const finalCategory = newCategoryName.trim() || itemCategory || "Miscellaneous";
+
     const gearData: Omit<GearItem, 'id'> = {
       name: itemName,
       weight: weightNum,
       notes: itemNotes,
       imageUrl: itemImage || (itemImageFile ? URL.createObjectURL(itemImageFile) : undefined),
       itemType: itemType,
-      category: itemCategory || "Miscellaneous",
+      category: finalCategory,
       "data-ai-hint": itemAiHint || itemName.toLowerCase().split(" ").slice(0,2).join(" "),
     };
 
@@ -283,20 +288,33 @@ export default function GearPage() {
                 <Label htmlFor="itemWeight" className="text-right">Weight (g)*</Label>
                 <Input id="itemWeight" type="number" value={itemWeight} onChange={e => setItemWeight(e.target.value)} className="col-span-3" placeholder="e.g., 1200" required />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="itemCategory" className="text-right">Category</Label>
-                <Select value={itemCategory} onValueChange={setItemCategory}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Miscellaneous">Miscellaneous</SelectItem>
-                    {uniqueCategories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="itemCategorySelect" className="text-right pt-2">Category</Label>
+                <div className="col-span-3 space-y-2">
+                  <Select value={itemCategory} onValueChange={setItemCategory}>
+                    <SelectTrigger id="itemCategorySelect" className="w-full">
+                      <SelectValue placeholder="Select an existing category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Miscellaneous">Miscellaneous</SelectItem>
+                      {uniqueCategories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative">
+                     <span className="absolute left-0 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pl-3">Or, </span>
+                    <Input 
+                      id="newCategoryName" 
+                      value={newCategoryName} 
+                      onChange={e => setNewCategoryName(e.target.value)} 
+                      className="w-full pl-10" 
+                      placeholder="add new category" />
+                  </div>
+                </div>
               </div>
+
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="itemType" className="text-right">Type</Label>
                 <RadioGroup value={itemType} onValueChange={(value: 'item' | 'container') => setItemType(value)} className="col-span-3 flex gap-4">
