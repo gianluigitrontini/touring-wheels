@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -37,12 +36,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { getTripsAction } from "@/lib/actions"; 
-
+import { getTripsAction } from "@/lib/actions";
 
 function TripsPageContent() {
   const searchParams = useSearchParams();
-  const statusFilter = searchParams.get('status') as Trip['status'] | 'all' | null;
+  const statusFilter = searchParams.get("status") as
+    | Trip["status"]
+    | "all"
+    | null;
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,9 +57,9 @@ function TripsPageContent() {
         setTrips(
           fetchedTrips.map((trip) => ({
             ...trip,
-            createdAt: new Date(trip.createdAt), 
-            updatedAt: new Date(trip.updatedAt), 
-            status: trip.status || 'planned', 
+            createdAt: new Date(trip.createdAt),
+            updatedAt: new Date(trip.updatedAt),
+            status: trip.status || "planned",
           }))
         );
       } catch (error) {
@@ -90,19 +91,18 @@ function TripsPageContent() {
     // } catch { /* ... */ }
   };
 
-  const filteredTrips = trips.filter(trip => {
-    if (!statusFilter || statusFilter === 'all') return true;
+  const filteredTrips = trips.filter((trip) => {
+    if (!statusFilter || statusFilter === "all") return true;
     return trip.status === statusFilter;
   });
 
   let pageTitle = "My Trips";
-  if (statusFilter === 'planned') pageTitle = "Planned Trips";
-  if (statusFilter === 'completed') pageTitle = "Completed Trips";
-
+  if (statusFilter === "planned") pageTitle = "Planned Trips";
+  if (statusFilter === "completed") pageTitle = "Completed Trips";
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
+      <div className="container-default flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-4 text-lg text-muted-foreground">Loading trips...</p>
       </div>
@@ -110,7 +110,7 @@ function TripsPageContent() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container-default">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-3">
           <MapPin className="h-8 w-8 text-primary" />
@@ -125,33 +125,50 @@ function TripsPageContent() {
           </Link>
         </Button>
       </div>
-      
+
       {/* Basic Filter Display - can be enhanced later */}
       <div className="mb-6 flex gap-2">
-        <Button variant={!statusFilter || statusFilter === 'all' ? 'default' : 'outline'} size="sm" asChild>
-            <Link href="/trips">All Trips</Link>
+        <Button
+          variant={
+            !statusFilter || statusFilter === "all" ? "default" : "outline"
+          }
+          size="sm"
+          asChild
+        >
+          <Link href="/trips">All Trips</Link>
         </Button>
-        <Button variant={statusFilter === 'planned' ? 'default' : 'outline'} size="sm" asChild>
-            <Link href="/trips?status=planned">Planned</Link>
+        <Button
+          variant={statusFilter === "planned" ? "default" : "outline"}
+          size="sm"
+          asChild
+        >
+          <Link href="/trips?status=planned">Planned</Link>
         </Button>
-        <Button variant={statusFilter === 'completed' ? 'default' : 'outline'} size="sm" asChild>
-            <Link href="/trips?status=completed">Completed</Link>
+        <Button
+          variant={statusFilter === "completed" ? "default" : "outline"}
+          size="sm"
+          asChild
+        >
+          <Link href="/trips?status=completed">Completed</Link>
         </Button>
       </div>
 
-
       {filteredTrips.length === 0 ? (
-        <Card className="text-center py-12 shadow-md">
+        <Card className="text-center py-12">
           <CardHeader>
             <CardTitle className="text-2xl font-headline text-primary">
-              No {statusFilter && statusFilter !== 'all' ? statusFilter : ''} Trips Found
+              No {statusFilter && statusFilter !== "all" ? statusFilter : ""}{" "}
+              Trips Found
             </CardTitle>
           </CardHeader>
           <CardContent>
             <CardDescription className="text-lg text-muted-foreground mb-6">
-              {statusFilter === 'planned' && "You have no trips currently planned."}
-              {statusFilter === 'completed' && "You haven't completed any trips yet."}
-              {(!statusFilter || statusFilter === 'all') && "It looks like you haven't planned any trips. Let's get started!"}
+              {statusFilter === "planned" &&
+                "You have no trips currently planned."}
+              {statusFilter === "completed" &&
+                "You haven't completed any trips yet."}
+              {(!statusFilter || statusFilter === "all") &&
+                "It looks like you haven't planned any trips. Let's get started!"}
             </CardDescription>
             <Button asChild size="lg">
               <Link href="/trips/new">
@@ -165,16 +182,21 @@ function TripsPageContent() {
           {filteredTrips.map((trip) => (
             <Card
               key={trip.id}
-              className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300"
+              className="flex flex-col transition-shadow duration-300"
             >
               <CardHeader>
                 <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl font-headline text-primary hover:text-accent transition-colors">
+                  <CardTitle className="text-xl font-headline text-primary hover:text-accent transition-colors">
                     <Link href={`/trips/${trip.id}`}>{trip.name}</Link>
-                    </CardTitle>
-                    <Badge variant={trip.status === 'completed' ? 'default' : 'secondary'} className="capitalize text-xs">
-                        {trip.status}
-                    </Badge>
+                  </CardTitle>
+                  <Badge
+                    variant={
+                      trip.status === "completed" ? "default" : "secondary"
+                    }
+                    className="capitalize text-xs"
+                  >
+                    {trip.status}
+                  </Badge>
                 </div>
                 <CardDescription className="flex items-center text-sm text-muted-foreground pt-1">
                   <CalendarDays className="mr-1.5 h-4 w-4" />
@@ -249,13 +271,17 @@ function TripsPageContent() {
 
 export default function TripsPage() {
   return (
-    <Suspense fallback={
-      <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg text-muted-foreground">Loading trips page...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="container-default flex justify-center items-center min-h-[calc(100vh-200px)]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-lg text-muted-foreground">
+            Loading trips page...
+          </p>
+        </div>
+      }
+    >
       <TripsPageContent />
     </Suspense>
-  )
+  );
 }

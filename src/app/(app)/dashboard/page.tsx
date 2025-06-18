@@ -11,7 +11,7 @@ import Link from "next/link";
 
 export default function DashboardPage() {
   return (
-    <div className="container mx-auto py-8">
+    <div className="container-default">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">
         <h1 className="text-3xl font-bold text-primary font-headline">
           Dashboard
@@ -81,7 +81,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card> */}
 
-        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full">
+        <Card className="transition-shadow duration-300 col-span-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary font-headline">
               <svg
@@ -128,7 +128,7 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-semibold text-primary mb-4 font-headline">
           Recent Activity
         </h2>
-        <div className="bg-card p-6 rounded-lg shadow">
+        <div className="bg-white/50 p-6 rounded-lg border">
           <p className="text-muted-foreground">
             No recent activity.{" "}
             <Link href="/trips/new" className="text-accent hover:underline">

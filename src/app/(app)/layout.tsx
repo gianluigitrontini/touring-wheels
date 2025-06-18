@@ -21,7 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen={true}>
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="items-center">
-          <Link href="/dashboard" className="flex items-center gap-2 mb-4">
+          <Link href="/dashboard" className="flex items-center gap-2 mb-6 mt-6">
             <MountainSnow className="h-8 w-8 text-sidebar-primary" />
             <span className="text-2xl font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden font-headline">
               Touring Wheels
@@ -43,9 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset className="flex flex-col">
         {/* <AppHeader /> */}
-        <main className="flex-1 overflow-y-auto p-6 bg-background">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto bg-background">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
