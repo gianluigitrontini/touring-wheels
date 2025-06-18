@@ -45,7 +45,12 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
   const [parsedTrack, setParsedTrack] = useState<ParsedGpxTrack | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
 
-  const mapKey = useMemo(() => Date.now() + Math.random(), []);
+  // mapKey will change on every render of MapDisplay.
+  // This forces MapContainer to unmount and remount.
+  // This is a workaround for persistent "Map container is already initialized" errors.
+  // It might have performance implications if MapDisplay re-renders frequently.
+  const mapKey = Date.now() + Math.random();
+
 
   useEffect(() => {
     setIsClientSide(true);
@@ -159,3 +164,4 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
     </div>
   );
 }
+
