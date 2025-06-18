@@ -1,268 +1,156 @@
 
 "use client";
 
-import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
-import type { GpxPoint, Waypoint } from "@/lib/types";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import type { Waypoint } from "@/lib/types";
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-leaflet";
+import L, { LatLngExpression, LatLngBoundsExpression } from "leaflet";
+import GpxParser from "gpxparser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Helper component to draw the GPX polyline
-function PathPolyline({ path }: { path: GpxPoint[] }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map || path.length === 0 || !google.maps.Polyline) return;
-
-    const gmapsPolyline = new google.maps.Polyline({
-      path: path.map(p => ({ lat: p.lat, lng: p.lon })),
-      strokeColor: "#3D5A80", // Primary color from theme
-      strokeOpacity: 0.8,
-      strokeWeight: 5,
-    });
-
-    gmapsPolyline.setMap(map);
-
-    return () => {
-      gmapsPolyline.setMap(null);
-    };
-  }, [map, path]);
-
-  return null;
-}
-
-// Helper component to render waypoints as markers
-function WaypointsRenderer({ 
-  waypoints, 
-  onWaypointClick 
-}: { 
-  waypoints: Waypoint[], 
-  onWaypointClick: (waypoint: Waypoint) => void 
-}) {
-  const map = useMap();
-  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-
-  useEffect(() => {
-    if (!map || !google.maps.Marker) {
-      markers.forEach(marker => marker.setMap(null));
-      setMarkers([]);
-      return;
-    }
-
-    // Clear existing markers
-    markers.forEach(marker => marker.setMap(null));
-
-    if (!waypoints || waypoints.length === 0) {
-      setMarkers([]);
-      return;
-    }
-
-    const newMarkers = waypoints.map((waypoint, index) => {
-      const marker = new google.maps.Marker({
-        position: { lat: waypoint.latitude, lng: waypoint.longitude },
-        map: map,
-        title: waypoint.name || `Weather Point ${index + 1}`,
-      });
-      marker.addListener('click', () => {
-        onWaypointClick(waypoint);
-      });
-      return marker;
-    });
-    setMarkers(newMarkers);
-
-    return () => {
-      newMarkers.forEach(marker => marker.setMap(null));
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [map, waypoints]); // onWaypointClick might need to be memoized or handled if it changes frequently
-
-  return null;
-}
-
-// Helper component for InfoWindow
-function CustomInfoWindow({ 
-  waypoint, 
-  onClose 
-}: { 
-  waypoint: Waypoint | null, 
-  onClose: () => void 
-}) {
-  const map = useMap();
-  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
-  
-  useEffect(() => {
-    if (!map || !google.maps.InfoWindow) return;
-
-    if (!infoWindowRef.current) {
-      const iw = new google.maps.InfoWindow({
-        pixelOffset: new google.maps.Size(0, -30),
-      });
-      infoWindowRef.current = iw;
-      
-      iw.addListener('closeclick', onClose);
-    }
-    
-    return () => {
-      if (infoWindowRef.current) {
-        google.maps.event.clearInstanceListeners(infoWindowRef.current);
-      }
-    };
-  }, [map, onClose]);
-
-
-  useEffect(() => {
-    const iw = infoWindowRef.current;
-    if (!iw || !map) return;
-
-    if (waypoint) {
-      const contentDiv = document.createElement('div');
-      contentDiv.className = "p-2 max-w-xs"; 
-      contentDiv.innerHTML = `
-        <h4 class="font-semibold text-md mb-1 text-primary">${waypoint.name || "Weather Info"}</h4>
-        <p class="text-sm text-foreground/80 mb-1"><strong>Reason:</strong> ${waypoint.reason}</p>
-        <p class="text-sm text-muted-foreground">
-          Temp: 22°C, Sunny <!-- Placeholder -->
-        </p>
-      `;
-      iw.setContent(contentDiv);
-      iw.setPosition({ lat: waypoint.latitude, lng: waypoint.longitude });
-      iw.open(map);
-    } else {
-      iw.close();
-    }
-  }, [map, waypoint]);
-
-  return null;
-}
+// Fix for default marker icons in Leaflet with bundlers like Webpack/Next.js
+// Ensure these image paths are correct relative to your public folder or that they are properly imported/handled by Next.js
+// For Next.js, you might need to ensure these are in the `public` directory and reference them correctly,
+// or use a library like `next/image` if you were to customize them further with Image components (not directly applicable here for L.Icon.Default).
+// This setup assumes Leaflet's images are correctly found by the bundler or available via its CSS.
+// If issues persist, direct import of image assets might be needed.
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
 
 
 interface MapDisplayProps {
-  gpxPoints?: GpxPoint[];
+  gpxData?: string; // GPX data as a string
   weatherWaypoints?: Waypoint[];
   className?: string;
-  apiKey?: string;
 }
 
-export function MapDisplay({ gpxPoints: initialGpxPoints, weatherWaypoints, className, apiKey }: MapDisplayProps) {
-  const [parsedGpxPath, setParsedGpxPath] = useState<GpxPoint[]>(initialGpxPoints || []);
-  const [center, setCenter] = useState({ lat: 40.7128, lng: -74.0060 }); // Default center
-  const [zoom, setZoom] = useState(5); // Default zoom
-  const [selectedWaypoint, setSelectedWaypoint] = useState<Waypoint | null>(null);
+interface ParsedGpxTrack {
+  points: LatLngExpression[];
+  bounds: LatLngBoundsExpression;
+}
+
+// Helper component to automatically fit map bounds to the track
+function FitBounds({ bounds }: { bounds: LatLngBoundsExpression | undefined }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds && map) {
+      map.fitBounds(bounds, { padding: [20, 20] });
+    }
+  }, [map, bounds]);
+  return null;
+}
+
+export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayProps) {
+  const [parsedTrack, setParsedTrack] = useState<ParsedGpxTrack | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialGpxPoints && initialGpxPoints.length > 0) {
-      setParsedGpxPath(initialGpxPoints);
-      const latitudes = initialGpxPoints.map(p => p.lat);
-      const longitudes = initialGpxPoints.map(p => p.lon);
-      const minLat = Math.min(...latitudes);
-      const maxLat = Math.max(...latitudes);
-      const minLng = Math.min(...longitudes);
-      const maxLng = Math.max(...longitudes);
+    if (gpxData) {
+      try {
+        const gpx = new GpxParser();
+        gpx.parse(gpxData);
 
-      setCenter({ lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 });
-      
-      const latDiff = maxLat - minLat;
-      const lngDiff = maxLng - minLng;
-      const maxDiff = Math.max(latDiff, lngDiff);
-      if (maxDiff > 0) {
-        const newZoom = Math.floor(9 - Math.log2(maxDiff * 1.5));
-        setZoom(Math.max(2, Math.min(15, newZoom)));
+        if (gpx.tracks.length === 0) {
+          setMapError("No tracks found in GPX data.");
+          setParsedTrack(null);
+          return;
+        }
+
+        // For simplicity, using the first track
+        const track = gpx.tracks[0];
+        const points: LatLngExpression[] = track.points.map(p => [p.lat, p.lon] as LatLngExpression);
+        
+        if (points.length === 0) {
+          setMapError("GPX track contains no points.");
+          setParsedTrack(null);
+          return;
+        }
+
+        const bounds = L.latLngBounds(points);
+        setParsedTrack({ points, bounds });
+        setMapError(null);
+
+      } catch (error) {
+        console.error("Error parsing GPX data:", error);
+        setMapError("Failed to parse GPX data.");
+        setParsedTrack(null);
       }
     } else {
-        setParsedGpxPath([]);
+      setParsedTrack(null);
+      setMapError(null); // No error if no data is provided intentionally
     }
-  }, [initialGpxPoints]);
-  
-  if (!apiKey) {
+  }, [gpxData]);
+
+  const polylineColor = 'hsl(var(--primary))'; // Using primary color from CSS variables
+
+  if (mapError) {
     return (
       <Card className={`border-destructive ${className}`}>
         <CardHeader>
-          <CardTitle className="text-destructive">Google Maps API Key Missing</CardTitle>
+          <CardTitle className="text-destructive">Map Error</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>
-            Please provide a Google Maps API Key to display the map.
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Ensure the Maps JavaScript API is enabled for your key.
-          </p>
+          <p>{mapError}</p>
         </CardContent>
       </Card>
     );
   }
   
-  function MapBoundsController({ points }: { points: GpxPoint[] }) {
-    const map = useMap();
-  
-    useEffect(() => {
-      if (!map || points.length === 0 || !google.maps.LatLngBounds) return;
-  
-      const bounds = new google.maps.LatLngBounds();
-      points.forEach(point => bounds.extend({ lat: point.lat, lng: point.lon }));
-      map.fitBounds(bounds);
-      
-      const listener = google.maps.event.addListenerOnce(map, 'idle', () => {
-        if (map.getZoom()! > 15) map.setZoom(15);
-        google.maps.event.removeListener(listener);
-      });
-    }, [map, points]);
-  
-    return null;
+  if (!gpxData && (!weatherWaypoints || weatherWaypoints.length === 0)) {
+    return (
+       <div className={`h-[500px] w-full rounded-lg overflow-hidden shadow-md flex items-center justify-center bg-muted ${className}`}>
+          <p className="text-muted-foreground">No route data or waypoints to display on the map.</p>
+       </div>
+    );
   }
+  
+  // Default center and zoom if no track is loaded but waypoints might exist
+  const defaultCenter: LatLngExpression = parsedTrack?.bounds ? L.latLngBounds(parsedTrack.points).getCenter() : [51.505, -0.09];
+  const defaultZoom = parsedTrack?.bounds ? 13 : 5;
+
 
   return (
-    <APIProvider apiKey={apiKey}>
-      <div className={`h-[500px] w-full rounded-lg overflow-hidden shadow-md ${className}`}>
-        <Map
-          defaultCenter={center}
-          defaultZoom={zoom}
-          center={center}
-          zoom={zoom}
-          gestureHandling="greedy"
-          disableDefaultUI={false}
-          mapId="touringWheelsMap"
-        >
-          {parsedGpxPath.length > 0 && (
-            <>
-              <PathPolyline path={parsedGpxPath} />
-              <MapBoundsController points={parsedGpxPath} />
-            </>
-          )}
-          {weatherWaypoints && weatherWaypoints.length > 0 && (
-            <WaypointsRenderer 
-              waypoints={weatherWaypoints} 
-              onWaypointClick={setSelectedWaypoint} 
-            />
-          )}
-          <CustomInfoWindow 
-            waypoint={selectedWaypoint} 
-            onClose={() => setSelectedWaypoint(null)} 
-          />
-        </Map>
-      </div>
-    </APIProvider>
+    <div className={`h-[500px] w-full rounded-lg overflow-hidden shadow-md ${className}`}>
+      <MapContainer 
+        center={defaultCenter} 
+        zoom={defaultZoom} 
+        scrollWheelZoom={true} 
+        style={{ height: "100%", width: "100%" }}
+        whenCreated={(mapInstance) => {
+            // Example: force a resize if layout issues occur, though often not needed
+            // setTimeout(() => mapInstance.invalidateSize(), 100);
+        }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {parsedTrack && parsedTrack.points.length > 0 && (
+          <>
+            <Polyline pathOptions={{ color: polylineColor, weight: 5 }} positions={parsedTrack.points} />
+            <FitBounds bounds={parsedTrack.bounds} />
+          </>
+        )}
+        {weatherWaypoints && weatherWaypoints.map((wp, idx) => (
+          <Marker key={idx} position={[wp.latitude, wp.longitude]}>
+            <Popup>
+              <div className="p-1">
+                <h4 className="font-semibold text-md mb-1 text-primary">{wp.name || `Weather Point ${idx + 1}`}</h4>
+                <p className="text-sm text-foreground/80 mb-0.5"><strong>Reason:</strong> {wp.reason}</p>
+                <p className="text-xs text-muted-foreground">Lat: {wp.latitude.toFixed(4)}, Lon: {wp.longitude.toFixed(4)}</p>
+                <p className="text-xs text-accent mt-0.5">Weather: Forecast unavailable (placeholder)</p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+         {!parsedTrack && weatherWaypoints && weatherWaypoints.length > 0 && (
+          <FitBounds bounds={L.latLngBounds(weatherWaypoints.map(wp => [wp.latitude, wp.longitude] as LatLngExpression))} />
+        )}
+      </MapContainer>
+    </div>
   );
 }
-
-// Basic GPX Parser (client-side) 
-function parseGpxClient(gpxString: string): GpxPoint[] {
-  const points: GpxPoint[] = [];
-  if (!gpxString) return points;
-
-  try {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(gpxString, "text/xml");
-    const trackpoints = xmlDoc.getElementsByTagName("trkpt");
-
-    for (let i = 0; i < trackpoints.length; i++) {
-      const lat = trackpoints[i].getAttribute("lat");
-      const lon = trackpoints[i].getAttribute("lon");
-      if (lat && lon) {
-        points.push({ lat: parseFloat(lat), lon: parseFloat(lon) });
-      }
-    }
-  } catch (error) {
-    console.error("Error parsing GPX on client:", error);
-  }
-  return points;
-}
-

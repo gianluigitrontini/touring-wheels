@@ -7,10 +7,10 @@ import { MapDisplay } from "@/components/map/map-display";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Trip, Waypoint, GpxPoint, GearItem } from "@/lib/types";
+import type { Trip, Waypoint, GearItem } from "@/lib/types";
 import { getAIWeatherPoints, getTripAction, getGearItemsAction, updateTripAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, PackageMinus, XCircle, Tag } from "lucide-react";
+import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, XCircle, Tag } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -24,26 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Basic GPX Parser (very simplified) - this should ideally be a shared utility
-function parseGpxClient(gpxString: string): GpxPoint[] {
-  const points: GpxPoint[] = [];
-  if (!gpxString) return points;
-  try {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(gpxString, "text/xml");
-    const trackpoints = xmlDoc.getElementsByTagName("trkpt");
-    for (let i = 0; i < trackpoints.length; i++) {
-      const lat = trackpoints[i].getAttribute("lat");
-      const lon = trackpoints[i].getAttribute("lon");
-      if (lat && lon) {
-        points.push({ lat: parseFloat(lat), lon: parseFloat(lon) });
-      }
-    }
-  } catch (error) {
-    console.error("Error parsing GPX on client:", error);
-  }
-  return points;
-}
 
 export default function TripDetailPage() {
   const params = useParams();
@@ -52,7 +32,6 @@ export default function TripDetailPage() {
   const { toast } = useToast();
 
   const [trip, setTrip] = useState<Trip | null>(null);
-  const [parsedGpx, setParsedGpx] = useState<GpxPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [activeTab, setActiveTab] = useState("map");
@@ -64,8 +43,6 @@ export default function TripDetailPage() {
   const [isLoadingGear, setIsLoadingGear] = useState(false);
   const [isSavingGear, setIsSavingGear] = useState(false);
   
-  const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""; 
-
   useEffect(() => {
     if (tripId) {
       const fetchTripData = async () => {
@@ -76,9 +53,6 @@ export default function TripDetailPage() {
             setTrip(fetchedTrip);
             setCurrentSelectedGearIds(fetchedTrip.selectedGearIds || []);
             setCurrentPackedItems(fetchedTrip.packedItems || {});
-            if (fetchedTrip.gpxData) {
-              setParsedGpx(parseGpxClient(fetchedTrip.gpxData));
-            }
           } else {
             toast({ title: "Trip not found", variant: "destructive" });
             router.push("/trips");
@@ -136,8 +110,10 @@ export default function TripDetailPage() {
       if (!newSelection.includes(gearId)) {
         setCurrentPackedItems(prevPacked => {
           const newPacked = { ...prevPacked };
-          delete newPacked[gearId]; // Remove if it was a container
-          for (const containerId in newPacked) { // Remove if it was packed in another container
+          // Remove the item if it's a container
+          delete newPacked[gearId];
+          // Remove the item if it's packed in another container
+          for (const containerId in newPacked) {
             newPacked[containerId] = newPacked[containerId].filter(id => id !== gearId);
           }
           return newPacked;
@@ -150,16 +126,24 @@ export default function TripDetailPage() {
   const handlePackItem = (itemIdToPack: string, containerId: string) => {
     setCurrentPackedItems(prevPacked => {
       const newPacked = { ...prevPacked };
+      // Ensure the item to pack is selected
+      if (!currentSelectedGearIds.includes(itemIdToPack)) return prevPacked;
+       // Ensure the container is selected and is a container type
+      const containerItem = allGearLibrary.find(item => item.id === containerId);
+      if (!containerItem || containerItem.itemType !== 'container' || !currentSelectedGearIds.includes(containerId)) return prevPacked;
+
+
+      // Remove item from any other container it might be in
+      for (const cId in newPacked) {
+        newPacked[cId] = newPacked[cId].filter(id => id !== itemIdToPack);
+      }
+      
+      // Add to the new container
       if (!newPacked[containerId]) {
         newPacked[containerId] = [];
       }
       if (!newPacked[containerId].includes(itemIdToPack)) {
         newPacked[containerId] = [...newPacked[containerId], itemIdToPack];
-      }
-      for (const cId in newPacked) {
-        if (cId !== containerId) {
-          newPacked[cId] = newPacked[cId].filter(id => id !== itemIdToPack);
-        }
       }
       return newPacked;
     });
@@ -171,6 +155,8 @@ export default function TripDetailPage() {
       if (containerId && newPacked[containerId]) {
         newPacked[containerId] = newPacked[containerId].filter(id => id !== itemIdToUnpack);
       }
+      // If containerId is not provided, it means we are unpacking from a "loose" state, which doesn't change currentPackedItems directly
+      // The item simply remains selected but not in any specific container.
       return newPacked;
     });
   };
@@ -180,14 +166,14 @@ export default function TripDetailPage() {
     if (!trip) return;
     setIsSavingGear(true);
     try {
-      const updatedTrip = await updateTripAction(trip.id, { 
+      const updatedTripData = await updateTripAction(trip.id, { 
         selectedGearIds: currentSelectedGearIds,
         packedItems: currentPackedItems 
       });
-      if (updatedTrip) {
-        setTrip(updatedTrip); 
-        setCurrentSelectedGearIds(updatedTrip.selectedGearIds); 
-        setCurrentPackedItems(updatedTrip.packedItems || {});
+      if (updatedTripData) {
+        setTrip(updatedTripData); 
+        setCurrentSelectedGearIds(updatedTripData.selectedGearIds || []); 
+        setCurrentPackedItems(updatedTripData.packedItems || {});
         toast({ title: "Gear Selections Saved", description: "Your gear list for this trip has been updated." });
       } else {
         toast({ title: "Error Saving Gear", description: "Could not save gear selections.", variant: "destructive" });
@@ -216,9 +202,13 @@ export default function TripDetailPage() {
     for (const id of originalSelectedSet) {
       if (!currentSelectedSet.has(id)) return true;
     }
+    for (const id of currentSelectedSet) {
+      if(!originalSelectedSet.has(id)) return true;
+    }
+
 
     const originalPacked = JSON.stringify(trip.packedItems || {});
-    const currentPacked = JSON.stringify(currentPackedItems || {});
+    const currentPacked = JSON.stringify(currentPackedItems); // currentPackedItems is already initialized
     if (originalPacked !== currentPacked) return true;
     
     return false;
@@ -226,8 +216,8 @@ export default function TripDetailPage() {
 
   const { topLevelSelectedItems, looseSelectedItems } = useMemo(() => {
     const packedItemIds = new Set(Object.values(currentPackedItems).flat());
-    const topLevelItems = selectedGearDetails.filter(item => !packedItemIds.has(item.id));
-    const looseItems = topLevelItems.filter(item => item.itemType !== 'container');
+    const topLevelItems = selectedGearDetails.filter(item => !packedItemIds.has(item.id) || item.itemType === 'container');
+    const looseItems = topLevelItems.filter(item => item.itemType !== 'container'); // Loose items cannot be containers themselves
     return { topLevelSelectedItems: topLevelItems, looseSelectedItems: looseItems };
   }, [selectedGearDetails, currentPackedItems]);
 
@@ -312,16 +302,14 @@ export default function TripDetailPage() {
               <CardDescription>Visualize your planned route. GPX data provided: {trip.gpxData ? 'Yes' : 'No'}</CardDescription>
             </CardHeader>
             <CardContent>
-              {parsedGpx.length > 0 ? (
+              {trip.gpxData || (trip.weatherWaypoints && trip.weatherWaypoints.length > 0) ? (
                  <MapDisplay 
-                    gpxPoints={parsedGpx} 
-                    weatherWaypoints={trip.weatherWaypoints} 
-                    apiKey={GOOGLE_MAPS_API_KEY} 
+                    gpxData={trip.gpxData} 
+                    weatherWaypoints={trip.weatherWaypoints}
                 />
               ) : (
                 <p className="text-muted-foreground p-4 border rounded-md text-center">
-                  No GPX data available to display the map for this trip, or the API key is missing/invalid.
-                  {!GOOGLE_MAPS_API_KEY && <span className="text-destructive block mt-2">Google Maps API Key is not configured.</span>}
+                  No GPX data or weather waypoints available to display the map for this trip.
                 </p>
               )}
             </CardContent>
@@ -438,7 +426,12 @@ export default function TripDetailPage() {
                           <p className="text-muted-foreground text-center">No gear selected yet. <br/>Check items from the "Available Gear" list.</p>
                         </div>
                       ) : (
-                        <Accordion type="multiple" className="w-full" defaultValue={topLevelSelectedItems.filter(i=>i.itemType === 'container').map(i=>i.id).concat(["loose-items"])}>
+                        <Accordion type="multiple" className="w-full" 
+                          defaultValue={
+                            topLevelSelectedItems.filter(i=>i.itemType === 'container').map(i=>i.id)
+                            .concat(looseSelectedItems.length > 0 ? ["loose-items"] : [])
+                          }
+                        >
                           {topLevelSelectedItems.filter(item => item.itemType === 'container').map(containerItem => (
                             <AccordionItem value={containerItem.id} key={`container-${containerItem.id}`} className="border-b-0 mb-1">
                               <Card className="shadow-sm bg-card/50">
@@ -446,7 +439,7 @@ export default function TripDetailPage() {
                                   <div className="flex items-center gap-3 w-full">
                                     <Package className="h-5 w-5 text-primary"/>
                                     <span className="font-semibold text-primary">{containerItem.name}</span>
-                                    <span className="text-xs text-muted-foreground ml-auto mr-2">({(currentPackedItems[containerItem.id]?.length || 0)} items)</span>
+                                    <span className="text-xs text-muted-foreground ml-auto mr-2">({(currentPackedItems[containerItem.id]?.length || 0)} items / {(currentPackedItems[containerItem.id]?.reduce((acc, packedId) => acc + (allGearLibrary.find(g => g.id === packedId)?.weight || 0), 0) || 0)}g)</span>
                                   </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="px-4 pb-3 pt-1">
@@ -464,7 +457,7 @@ export default function TripDetailPage() {
                                     );
                                   })}
                                   {(!currentPackedItems[containerItem.id] || currentPackedItems[containerItem.id].length === 0) && (
-                                      <p className="text-xs text-muted-foreground italic py-1">This bag is empty.</p>
+                                      <p className="text-xs text-muted-foreground italic py-1">This bag is empty. Pack items using the dropdown on loose items.</p>
                                   )}
                                   </div>
                                 </AccordionContent>
@@ -537,4 +530,3 @@ export default function TripDetailPage() {
     </div>
   );
 }
-

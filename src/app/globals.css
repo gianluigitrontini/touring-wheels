@@ -35,8 +35,8 @@ body {
     --radius: 0.5rem;
 
     /* Sidebar specific theme */
-    --sidebar-background: 215 35% 32%; /* Slightly darker than primary */
-    --sidebar-foreground: 0 0% 93%; /* Light gray for text */
+    --sidebar-background: 0 0% 97%; /* Slightly darker than primary */
+    --sidebar-foreground: 0 0% 25%; /* Light gray for text */
     --sidebar-primary: 203 47% 72%; /* Accent for sidebar primary elements */
     --sidebar-primary-foreground: 215 35% 20%; /* Darker text on sidebar primary */
     --sidebar-accent: 215 35% 42%; /* Primary variant for sidebar accent */
@@ -91,3 +91,6 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Import Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
