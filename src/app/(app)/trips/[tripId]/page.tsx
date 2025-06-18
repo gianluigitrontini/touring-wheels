@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Trip, Waypoint, GpxPoint, GearItem } from "@/lib/types";
 import { getAIWeatherPoints, getTripAction, getGearItemsAction, updateTripAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, PackageMinus, ChevronDown, ChevronRight, XCircle } from "lucide-react";
+import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, PackageMinus, XCircle, Tag } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -150,15 +150,12 @@ export default function TripDetailPage() {
   const handlePackItem = (itemIdToPack: string, containerId: string) => {
     setCurrentPackedItems(prevPacked => {
       const newPacked = { ...prevPacked };
-      // Ensure containerId is initialized
       if (!newPacked[containerId]) {
         newPacked[containerId] = [];
       }
-      // Add itemIdToPack if not already there
       if (!newPacked[containerId].includes(itemIdToPack)) {
         newPacked[containerId] = [...newPacked[containerId], itemIdToPack];
       }
-      // Remove itemIdToPack from any other container it might have been in
       for (const cId in newPacked) {
         if (cId !== containerId) {
           newPacked[cId] = newPacked[cId].filter(id => id !== itemIdToPack);
@@ -173,9 +170,6 @@ export default function TripDetailPage() {
       const newPacked = { ...prevPacked };
       if (containerId && newPacked[containerId]) {
         newPacked[containerId] = newPacked[containerId].filter(id => id !== itemIdToUnpack);
-        if (newPacked[containerId].length === 0) {
-          // delete newPacked[containerId]; // Optional: remove empty container from packedItems
-        }
       }
       return newPacked;
     });
@@ -230,22 +224,35 @@ export default function TripDetailPage() {
     return false;
   }, [trip, currentSelectedGearIds, currentPackedItems]);
 
-  const { topLevelItems, looseItems } = useMemo(() => {
+  const { topLevelSelectedItems, looseSelectedItems } = useMemo(() => {
     const packedItemIds = new Set(Object.values(currentPackedItems).flat());
     const topLevelItems = selectedGearDetails.filter(item => !packedItemIds.has(item.id));
     const looseItems = topLevelItems.filter(item => item.itemType !== 'container');
-    return { topLevelItems, looseItems };
+    return { topLevelSelectedItems: topLevelItems, looseSelectedItems: looseItems };
   }, [selectedGearDetails, currentPackedItems]);
 
-
-  const getContainerForItem = (itemId: string): string | undefined => {
-    for (const containerId in currentPackedItems) {
-      if (currentPackedItems[containerId].includes(itemId)) {
-        return containerId;
+  const groupedAvailableGear = useMemo(() => {
+    const groups: Record<string, GearItem[]> = {};
+    allGearLibrary.forEach(item => {
+      const category = item.category || "Miscellaneous";
+      if (!groups[category]) {
+        groups[category] = [];
       }
+      groups[category].push(item);
+    });
+    for (const category in groups) {
+      groups[category].sort((a, b) => a.name.localeCompare(b.name));
     }
-    return undefined;
-  };
+    return groups;
+  }, [allGearLibrary]);
+
+  const sortedAvailableCategories = useMemo(() => {
+    return Object.keys(groupedAvailableGear).sort((a,b) => {
+      if (a === "Miscellaneous") return 1;
+      if (b === "Miscellaneous") return -1;
+      return a.localeCompare(b);
+    });
+  }, [groupedAvailableGear]);
 
 
   if (isLoading) {
@@ -380,32 +387,46 @@ export default function TripDetailPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
                   <div>
                     <h3 className="text-lg font-semibold mb-3 text-primary flex items-center"><Settings2 className="mr-2 h-5 w-5"/>Available Gear Library</h3>
-                    <ScrollArea className="h-[500px] border rounded-md p-4 bg-muted/20">
-                      <div className="space-y-3">
-                        {allGearLibrary.map(item => (
-                          <div key={item.id} className="flex items-center space-x-3 p-2 bg-background rounded-md shadow-sm hover:bg-muted/50">
-                            <Checkbox
-                              id={`gear-select-${item.id}`}
-                              checked={currentSelectedGearIds.includes(item.id)}
-                              onCheckedChange={() => handleToggleGearItemSelection(item.id)}
-                              aria-label={`Select ${item.name}`}
-                            />
-                             <div className="flex-shrink-0 w-10 h-10">
-                              {item.imageUrl ? (
-                                <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "gear"} width={40} height={40} className="rounded object-cover" />
-                              ) : (
-                                <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
-                                  {item.itemType === 'container' ? <Package className="h-5 w-5 text-secondary-foreground" /> : <ListChecks className="h-5 w-5 text-secondary-foreground" />}
-                                </div>
-                              )}
-                            </div>
-                            <Label htmlFor={`gear-select-${item.id}`} className="flex-grow cursor-pointer">
-                              <span className="font-medium text-foreground">{item.name} {item.itemType === 'container' && '(Bag)'}</span>
-                              <span className="text-xs text-muted-foreground block">{item.weight}g - {item.notes || "No notes"}</span>
-                            </Label>
-                          </div>
+                    <ScrollArea className="h-[500px] border rounded-md p-1 bg-muted/20">
+                     <Accordion type="multiple" defaultValue={sortedAvailableCategories} className="w-full space-y-2 p-2">
+                        {sortedAvailableCategories.map(category => (
+                          <AccordionItem value={category} key={`available-${category}`} className="border bg-background rounded-md shadow-sm">
+                            <AccordionTrigger className="px-4 py-3 text-base font-medium text-primary hover:no-underline">
+                              <div className="flex items-center gap-2">
+                                <Tag className="h-5 w-5" />
+                                {category} ({groupedAvailableGear[category].length})
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 pb-3 pt-1">
+                              <div className="space-y-2">
+                                {groupedAvailableGear[category].map(item => (
+                                  <div key={item.id} className="flex items-center space-x-3 p-2 bg-card rounded-md shadow-sm hover:bg-card/80">
+                                    <Checkbox
+                                      id={`gear-select-${item.id}`}
+                                      checked={currentSelectedGearIds.includes(item.id)}
+                                      onCheckedChange={() => handleToggleGearItemSelection(item.id)}
+                                      aria-label={`Select ${item.name}`}
+                                    />
+                                    <div className="flex-shrink-0 w-10 h-10">
+                                      {item.imageUrl ? (
+                                        <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "gear"} width={40} height={40} className="rounded object-cover" />
+                                      ) : (
+                                        <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
+                                          {item.itemType === 'container' ? <Package className="h-5 w-5 text-secondary-foreground" /> : <ListChecks className="h-5 w-5 text-secondary-foreground" />}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Label htmlFor={`gear-select-${item.id}`} className="flex-grow cursor-pointer">
+                                      <span className="font-medium text-foreground">{item.name} {item.itemType === 'container' && '(Bag)'}</span>
+                                      <span className="text-xs text-muted-foreground block">{item.weight}g - {item.notes || "No notes"}</span>
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
                         ))}
-                      </div>
+                      </Accordion>
                     </ScrollArea>
                   </div>
                   
@@ -417,8 +438,8 @@ export default function TripDetailPage() {
                           <p className="text-muted-foreground text-center">No gear selected yet. <br/>Check items from the "Available Gear" list.</p>
                         </div>
                       ) : (
-                        <Accordion type="multiple" className="w-full">
-                          {topLevelItems.filter(item => item.itemType === 'container').map(containerItem => (
+                        <Accordion type="multiple" className="w-full" defaultValue={topLevelSelectedItems.filter(i=>i.itemType === 'container').map(i=>i.id).concat(["loose-items"])}>
+                          {topLevelSelectedItems.filter(item => item.itemType === 'container').map(containerItem => (
                             <AccordionItem value={containerItem.id} key={`container-${containerItem.id}`} className="border-b-0 mb-1">
                               <Card className="shadow-sm bg-card/50">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">
@@ -451,19 +472,19 @@ export default function TripDetailPage() {
                             </AccordionItem>
                           ))}
 
-                          {looseItems.length > 0 && (
+                          {looseSelectedItems.length > 0 && (
                             <AccordionItem value="loose-items" className="border-b-0">
                                <Card className="shadow-sm mt-2">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline bg-muted/30 rounded-t-md">
                                     <div className="flex items-center gap-3 w-full">
                                         <ListChecks className="h-5 w-5 text-muted-foreground"/>
                                         <span className="font-semibold text-muted-foreground">Loose / Unpacked Items</span>
-                                        <span className="text-xs text-muted-foreground ml-auto mr-2">({looseItems.length} items)</span>
+                                        <span className="text-xs text-muted-foreground ml-auto mr-2">({looseSelectedItems.length} items)</span>
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="px-4 pb-3 pt-2">
                                   <div className="space-y-2">
-                                    {looseItems.map(item => (
+                                    {looseSelectedItems.map(item => (
                                       <Card key={`loose-${item.id}`} className="p-3 shadow-none bg-background/50">
                                         <div className="flex items-center justify-between gap-3">
                                           <div className="flex items-center gap-2">
@@ -516,3 +537,4 @@ export default function TripDetailPage() {
     </div>
   );
 }
+
