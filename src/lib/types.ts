@@ -14,6 +14,7 @@ export interface GearItem {
   imageUrl?: string;
   notes?: string;
   itemType?: 'item' | 'container'; // New: To identify if it can act as a bag
+  category?: string; // Category for the gear item (e.g., Sleeping, Cooking)
   'data-ai-hint'?: string;
 }
 
@@ -22,7 +23,7 @@ export interface BikeModel {
   name: string;
   brand?: string;
   model?: string;
-  year?: string; 
+  year?: string;
   imageUrl?: string;
   notes?: string;
 }

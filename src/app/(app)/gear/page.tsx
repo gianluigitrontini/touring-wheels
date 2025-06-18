@@ -1,15 +1,15 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Trash2, Edit3, ListChecks, Weight, Image as ImageIcon, Loader2, Package, PackageCheck } from "lucide-react";
+import { PlusCircle, Trash2, Edit3, ListChecks, Weight, Image as ImageIcon, Loader2, Package, PackageCheck, Tag } from "lucide-react";
 import type { GearItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import Image from 'next/image'; 
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -22,22 +22,22 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getGearItemsAction, addGearItemAction, updateGearItemAction, deleteGearItemAction } from "@/lib/actions";
 import { Textarea } from "@/components/ui/textarea";
-
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export default function GearPage() {
   const [gearItems, setGearItems] = useState<GearItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<GearItem | null>(null);
-  
+
   const [itemName, setItemName] = useState("");
   const [itemWeight, setItemWeight] = useState("");
   const [itemNotes, setItemNotes] = useState("");
   const [itemImage, setItemImage] = useState<string | null>(null);
   const [itemImageFile, setItemImageFile] = useState<File | null>(null);
   const [itemType, setItemType] = useState<'item' | 'container'>('item');
+  const [itemCategory, setItemCategory] = useState("");
   const [itemAiHint, setItemAiHint] = useState("");
-
 
   const { toast } = useToast();
 
@@ -57,7 +57,6 @@ export default function GearPage() {
     fetchGear();
   }, [toast]);
 
-
   const resetForm = () => {
     setItemName("");
     setItemWeight("");
@@ -66,6 +65,7 @@ export default function GearPage() {
     setItemImageFile(null);
     setEditingItem(null);
     setItemType("item");
+    setItemCategory("");
     setItemAiHint("");
   };
 
@@ -77,6 +77,7 @@ export default function GearPage() {
       setItemNotes(item.notes || "");
       setItemImage(item.imageUrl || null);
       setItemType(item.itemType || "item");
+      setItemCategory(item.category || "");
       setItemAiHint(item["data-ai-hint"] || "");
     } else {
       resetForm();
@@ -85,8 +86,8 @@ export default function GearPage() {
   };
 
   const handleImageUpload = (imageDataUrl: string, file: File) => {
-    setItemImage(imageDataUrl); 
-    setItemImageFile(file); 
+    setItemImage(imageDataUrl);
+    setItemImageFile(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,6 +108,7 @@ export default function GearPage() {
       notes: itemNotes,
       imageUrl: itemImage || (itemImageFile ? URL.createObjectURL(itemImageFile) : undefined),
       itemType: itemType,
+      category: itemCategory || "Miscellaneous",
       "data-ai-hint": itemAiHint || itemName.toLowerCase().split(" ").slice(0,2).join(" "),
     };
 
@@ -147,6 +149,31 @@ export default function GearPage() {
     }
   }
 
+  const groupedGearItems = useMemo(() => {
+    const groups: Record<string, GearItem[]> = {};
+    gearItems.forEach(item => {
+      const category = item.category || "Miscellaneous";
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(item);
+    });
+    // Sort items within each category by name
+    for (const category in groups) {
+      groups[category].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return groups;
+  }, [gearItems]);
+
+  const sortedCategories = useMemo(() => {
+    return Object.keys(groupedGearItems).sort((a,b) => {
+      if (a === "Miscellaneous") return 1; // Always sort Miscellaneous last
+      if (b === "Miscellaneous") return -1;
+      return a.localeCompare(b);
+    });
+  }, [groupedGearItems]);
+
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -178,43 +205,57 @@ export default function GearPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {gearItems.map((item) => (
-            <Card key={item.id} className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <CardHeader className="relative p-0">
-                {item.imageUrl ? (
-                   <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "bicycle equipment"} width={300} height={200} className="object-cover w-full h-48 rounded-t-lg" />
-                ) : (
-                  <div className="w-full h-48 rounded-t-lg bg-secondary flex items-center justify-center">
-                    {item.itemType === 'container' ? <PackageCheck className="w-16 h-16 text-secondary-foreground/50" /> : <ListChecks className="w-16 h-16 text-secondary-foreground/50" /> }
-                  </div>
-                )}
-                 {item.itemType === 'container' && (
-                    <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 text-xs rounded-full font-semibold flex items-center gap-1">
-                        <Package size={14}/> Bag
-                    </div>
-                )}
-              </CardHeader>
-              <CardContent className="flex-grow pt-4">
-                <CardTitle className="text-lg font-headline text-primary mb-1">{item.name}</CardTitle>
-                <div className="text-sm text-muted-foreground flex items-center mb-2">
-                  <Weight className="mr-1.5 h-4 w-4" /> {item.weight}g
+        <Accordion type="multiple" defaultValue={sortedCategories} className="w-full space-y-4">
+          {sortedCategories.map(category => (
+            <AccordionItem value={category} key={category} className="border bg-card rounded-lg shadow-sm">
+              <AccordionTrigger className="px-6 py-4 text-xl font-headline text-primary hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-5 w-5" />
+                  {category} ({groupedGearItems[category].length})
                 </div>
-                <p className="text-xs text-foreground/80 line-clamp-3">
-                  {item.notes || "No additional notes."}
-                </p>
-              </CardContent>
-              <CardFooter className="flex justify-end gap-2 pt-3 border-t">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => handleOpenModal(item)}>
-                  <Edit3 className="h-4 w-4" /> <span className="sr-only">Edit</span>
-                </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleDelete(item.id)}>
-                  <Trash2 className="h-4 w-4" /> <span className="sr-only">Delete</span>
-                </Button>
-              </CardFooter>
-            </Card>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {groupedGearItems[category].map((item) => (
+                    <Card key={item.id} className="flex flex-col shadow-md hover:shadow-lg transition-shadow duration-200">
+                      <CardHeader className="relative p-0">
+                        {item.imageUrl ? (
+                          <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "bicycle equipment"} width={300} height={200} className="object-cover w-full h-48 rounded-t-lg" />
+                        ) : (
+                          <div className="w-full h-48 rounded-t-lg bg-secondary flex items-center justify-center">
+                            {item.itemType === 'container' ? <PackageCheck className="w-16 h-16 text-secondary-foreground/50" /> : <ListChecks className="w-16 h-16 text-secondary-foreground/50" /> }
+                          </div>
+                        )}
+                        {item.itemType === 'container' && (
+                          <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 text-xs rounded-full font-semibold flex items-center gap-1">
+                            <Package size={14}/> Bag
+                          </div>
+                        )}
+                      </CardHeader>
+                      <CardContent className="flex-grow pt-4">
+                        <CardTitle className="text-lg font-headline text-primary mb-1">{item.name}</CardTitle>
+                        <div className="text-sm text-muted-foreground flex items-center mb-2">
+                          <Weight className="mr-1.5 h-4 w-4" /> {item.weight}g
+                        </div>
+                        <p className="text-xs text-foreground/80 line-clamp-3">
+                          {item.notes || "No additional notes."}
+                        </p>
+                      </CardContent>
+                      <CardFooter className="flex justify-end gap-2 pt-3 border-t">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => handleOpenModal(item)}>
+                          <Edit3 className="h-4 w-4" /> <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleDelete(item.id)}>
+                          <Trash2 className="h-4 w-4" /> <span className="sr-only">Delete</span>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -234,6 +275,10 @@ export default function GearPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="itemWeight" className="text-right">Weight (g)*</Label>
                 <Input id="itemWeight" type="number" value={itemWeight} onChange={e => setItemWeight(e.target.value)} className="col-span-3" placeholder="e.g., 1200" required />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="itemCategory" className="text-right">Category</Label>
+                <Input id="itemCategory" value={itemCategory} onChange={e => setItemCategory(e.target.value)} className="col-span-3" placeholder="e.g., Sleeping, Cooking, Bags" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="itemType" className="text-right">Type</Label>
