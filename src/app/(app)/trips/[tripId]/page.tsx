@@ -1,21 +1,23 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import dynamic from 'next/dynamic'; // Import dynamic
+import dynamic from 'next/dynamic'; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Trip, Waypoint, GearItem } from "@/lib/types";
 import { getAIWeatherPoints, getTripAction, getGearItemsAction, updateTripAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, XCircle, Tag, PackageCheck } from "lucide-react";
+import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, XCircle, Tag, PackageCheck, CalendarClock, BookOpen, CheckCircle, Zap } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   DropdownMenu,
@@ -24,7 +26,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Dynamically import MapDisplay
 const MapDisplay = dynamic(() => import('@/components/map/map-display').then(mod => mod.MapDisplay), {
   ssr: false,
   loading: () => <div className="h-[500px] w-full flex items-center justify-center bg-muted rounded-lg"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2 text-muted-foreground">Loading map...</p></div>,
@@ -45,34 +46,38 @@ export default function TripDetailPage() {
   const [allGearLibrary, setAllGearLibrary] = useState<GearItem[]>([]);
   const [currentSelectedGearIds, setCurrentSelectedGearIds] = useState<string[]>([]);
   const [currentPackedItems, setCurrentPackedItems] = useState<Record<string, string[]>>({});
+  const [currentDailyNotes, setCurrentDailyNotes] = useState<Record<number, string>>({});
   
   const [isLoadingGear, setIsLoadingGear] = useState(false);
   const [isSavingGear, setIsSavingGear] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const loadTripData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedTrip = await getTripAction(tripId); 
+      if (fetchedTrip) {
+        setTrip(fetchedTrip);
+        setCurrentSelectedGearIds(fetchedTrip.selectedGearIds || []);
+        setCurrentPackedItems(fetchedTrip.packedItems || {});
+        setCurrentDailyNotes(fetchedTrip.dailyNotes || {});
+      } else {
+        toast({ title: "Trip not found", variant: "destructive" });
+        router.push("/trips");
+      }
+    } catch (error) {
+      console.error("Failed to fetch trip:", error);
+      toast({ title: "Error fetching trip", description: "Could not load trip data.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tripId, router, toast]);
   
   useEffect(() => {
     if (tripId) {
-      const fetchTripData = async () => {
-        setIsLoading(true);
-        try {
-          const fetchedTrip = await getTripAction(tripId); 
-          if (fetchedTrip) {
-            setTrip(fetchedTrip);
-            setCurrentSelectedGearIds(fetchedTrip.selectedGearIds || []);
-            setCurrentPackedItems(fetchedTrip.packedItems || {});
-          } else {
-            toast({ title: "Trip not found", variant: "destructive" });
-            router.push("/trips");
-          }
-        } catch (error) {
-          console.error("Failed to fetch trip:", error);
-          toast({ title: "Error fetching trip", description: "Could not load trip data.", variant: "destructive" });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchTripData();
+      loadTripData();
     }
-  }, [tripId, router, toast]);
+  }, [tripId, loadTripData]);
 
   useEffect(() => {
     const fetchGearItems = async () => {
@@ -99,8 +104,11 @@ export default function TripDetailPage() {
     setIsLoadingWeather(true);
     try {
       const waypoints = await getAIWeatherPoints(trip.gpxData, trip.description);
+      // Update local trip state first for responsiveness
       setTrip(prevTrip => prevTrip ? { ...prevTrip, weatherWaypoints: waypoints } : null);
-      toast({ title: "Weather Points Loaded", description: `${waypoints.length} relevant points identified by AI.` });
+      // Then update on the server
+      await updateTripAction(trip.id, { weatherWaypoints: waypoints });
+      toast({ title: "Weather Points Loaded & Saved", description: `${waypoints.length} relevant points identified by AI.` });
     } catch (error) {
       console.error("Failed to fetch AI weather points:", error);
       toast({ title: "Error fetching weather points", description: (error as Error).message, variant: "destructive" });
@@ -112,13 +120,10 @@ export default function TripDetailPage() {
   const handleToggleGearItemSelection = (gearId: string) => {
     setCurrentSelectedGearIds(prev => {
       const newSelection = prev.includes(gearId) ? prev.filter(id => id !== gearId) : [...prev, gearId];
-      // If item is deselected, also remove it from any packedItems structure
       if (!newSelection.includes(gearId)) {
         setCurrentPackedItems(prevPacked => {
           const newPacked = { ...prevPacked };
-          // Remove the item if it's a container
           delete newPacked[gearId];
-          // Remove the item if it's packed in another container
           for (const containerId in newPacked) {
             newPacked[containerId] = newPacked[containerId].filter(id => id !== gearId);
           }
@@ -132,19 +137,14 @@ export default function TripDetailPage() {
   const handlePackItem = (itemIdToPack: string, containerId: string) => {
     setCurrentPackedItems(prevPacked => {
       const newPacked = { ...prevPacked };
-      // Ensure the item to pack is selected
       if (!currentSelectedGearIds.includes(itemIdToPack)) return prevPacked;
-       // Ensure the container is selected and is a container type
       const containerItem = allGearLibrary.find(item => item.id === containerId);
       if (!containerItem || containerItem.itemType !== 'container' || !currentSelectedGearIds.includes(containerId)) return prevPacked;
 
-
-      // Remove item from any other container it might be in
       for (const cId in newPacked) {
         newPacked[cId] = newPacked[cId].filter(id => id !== itemIdToPack);
       }
       
-      // Add to the new container
       if (!newPacked[containerId]) {
         newPacked[containerId] = [];
       }
@@ -161,8 +161,6 @@ export default function TripDetailPage() {
       if (containerId && newPacked[containerId]) {
         newPacked[containerId] = newPacked[containerId].filter(id => id !== itemIdToUnpack);
       }
-      // If containerId is not provided, it means we are unpacking from a "loose" state, which doesn't change currentPackedItems directly
-      // The item simply remains selected but not in any specific container.
       return newPacked;
     });
   };
@@ -204,20 +202,13 @@ export default function TripDetailPage() {
     if (!trip) return false;
     const originalSelectedSet = new Set(trip.selectedGearIds || []);
     const currentSelectedSet = new Set(currentSelectedGearIds);
-    if (originalSelectedSet.size !== currentSelectedSet.size) return true;
-    for (const id of originalSelectedSet) {
-      if (!currentSelectedSet.has(id)) return true;
-    }
-    for (const id of currentSelectedSet) {
-      if(!originalSelectedSet.has(id)) return true;
-    }
-
+    if (originalSelectedSet.size !== currentSelectedSet.size || 
+        !Array.from(originalSelectedSet).every(id => currentSelectedSet.has(id)) ||
+        !Array.from(currentSelectedSet).every(id => originalSelectedSet.has(id))) return true;
 
     const originalPacked = JSON.stringify(trip.packedItems || {});
     const currentPacked = JSON.stringify(currentPackedItems); 
-    if (originalPacked !== currentPacked) return true;
-    
-    return false;
+    return originalPacked !== currentPacked;
   }, [trip, currentSelectedGearIds, currentPackedItems]);
 
   const { topLevelSelectedItems, looseSelectedItems } = useMemo(() => {
@@ -231,14 +222,10 @@ export default function TripDetailPage() {
     const groups: Record<string, GearItem[]> = {};
     allGearLibrary.forEach(item => {
       const category = item.category || "Miscellaneous";
-      if (!groups[category]) {
-        groups[category] = [];
-      }
+      if (!groups[category]) groups[category] = [];
       groups[category].push(item);
     });
-    for (const category in groups) {
-      groups[category].sort((a, b) => a.name.localeCompare(b.name));
-    }
+    for (const category in groups) groups[category].sort((a, b) => a.name.localeCompare(b.name));
     return groups;
   }, [allGearLibrary]);
 
@@ -250,6 +237,49 @@ export default function TripDetailPage() {
     });
   }, [groupedAvailableGear]);
 
+  const handleDailyNoteChange = (day: number, note: string) => {
+    setCurrentDailyNotes(prev => ({ ...prev, [day]: note }));
+  };
+
+  const handleSaveDailyNotes = async () => {
+    if (!trip) return;
+    setIsSavingNotes(true);
+    try {
+      const updatedTrip = await updateTripAction(trip.id, { dailyNotes: currentDailyNotes });
+      if (updatedTrip) {
+        setTrip(updatedTrip);
+        setCurrentDailyNotes(updatedTrip.dailyNotes || {});
+        toast({ title: "Travel Diary Saved", description: "Your daily notes have been updated." });
+      } else {
+        toast({ title: "Error Saving Notes", description: "Could not save daily notes.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error Saving Notes", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+  
+  const dailyNotesChanged = useMemo(() => {
+    if (!trip) return false;
+    return JSON.stringify(trip.dailyNotes || {}) !== JSON.stringify(currentDailyNotes);
+  }, [trip, currentDailyNotes]);
+
+  const handleChangeTripStatus = async () => {
+    if (!trip) return;
+    const newStatus = trip.status === 'planned' ? 'completed' : 'planned';
+    try {
+      const updatedTrip = await updateTripAction(trip.id, { status: newStatus });
+      if (updatedTrip) {
+        setTrip(updatedTrip);
+        toast({ title: "Trip Status Updated", description: `Trip marked as ${newStatus}.` });
+      } else {
+        toast({ title: "Error Updating Status", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error Updating Status", description: (error as Error).message, variant: "destructive" });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -272,11 +302,44 @@ export default function TripDetailPage() {
     );
   }
   
+  const renderDailyNotesInputs = () => {
+    if (!trip.durationDays || trip.durationDays <= 0) {
+      return (
+        <div className="text-center py-8 bg-muted rounded-md">
+          <CalendarClock className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">
+            Set a duration for this trip to add daily notes.
+          </p>
+          <Button variant="link" asChild className="mt-2">
+            <Link href={`/trips/${trip.id}/edit`}>Edit Trip Duration</Link>
+          </Button>
+        </div>
+      );
+    }
+    const inputs = [];
+    for (let i = 1; i <= trip.durationDays; i++) {
+      inputs.push(
+        <div key={`day-${i}`} className="space-y-2">
+          <Label htmlFor={`day-note-${i}`} className="text-base font-medium text-primary">Day {i}</Label>
+          <Textarea
+            id={`day-note-${i}`}
+            value={currentDailyNotes[i] || ""}
+            onChange={(e) => handleDailyNoteChange(i, e.target.value)}
+            placeholder={`Notes for Day ${i}...`}
+            rows={4}
+            className="bg-background/70"
+          />
+        </div>
+      );
+    }
+    return <div className="space-y-6">{inputs}</div>;
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-3 mb-2">
             <Button variant="outline" size="icon" asChild>
                 <Link href="/trips">
                 <ArrowLeft className="h-5 w-5" />
@@ -284,21 +347,36 @@ export default function TripDetailPage() {
                 </Link>
             </Button>
             <h1 className="text-3xl font-bold text-primary font-headline">{trip.name}</h1>
+            <Badge variant={trip.status === 'completed' ? 'default' : 'secondary'} className="capitalize text-sm py-1 px-3">
+              {trip.status || 'Planned'}
+            </Badge>
           </div>
           <p className="text-muted-foreground ml-12 sm:ml-0">{trip.description || "No description provided."}</p>
+          {trip.durationDays && (
+             <p className="text-sm text-muted-foreground ml-12 sm:ml-0 mt-1 flex items-center">
+                <CalendarClock className="mr-1.5 h-4 w-4" /> Duration: {trip.durationDays} day{trip.durationDays > 1 ? 's' : ''}
+            </p>
+          )}
         </div>
-        <Button variant="outline" asChild>
-          <Link href={`/trips/${trip.id}/edit`}>
-            <Edit className="mr-2 h-4 w-4" /> Edit Trip
-          </Link>
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+            <Button variant="outline" onClick={handleChangeTripStatus}>
+                {trip.status === 'planned' ? <CheckCircle className="mr-2 h-4 w-4"/> : <Zap className="mr-2 h-4 w-4"/>}
+                {trip.status === 'planned' ? "Mark as Completed" : "Mark as Planned"}
+            </Button>
+            <Button variant="outline" asChild>
+            <Link href={`/trips/${trip.id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" /> Edit Trip Details
+            </Link>
+            </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="map" className="text-base py-2.5"><MapPin className="mr-2 h-5 w-5" />Route & Map</TabsTrigger>
           <TabsTrigger value="weather" className="text-base py-2.5"><CloudDrizzle className="mr-2 h-5 w-5" />Weather</TabsTrigger>
           <TabsTrigger value="gear" className="text-base py-2.5"><ListChecks className="mr-2 h-5 w-5" />Gear List</TabsTrigger>
+          <TabsTrigger value="diary" className="text-base py-2.5"><BookOpen className="mr-2 h-5 w-5" />Travel Diary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="map">
@@ -532,8 +610,29 @@ export default function TripDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="diary">
+          <Card className="shadow-lg">
+            <CardHeader className="flex flex-row justify-between items-center">
+                <div>
+                    <CardTitle className="font-headline">Travel Diary</CardTitle>
+                    <CardDescription>Record your experiences for each day of the trip.</CardDescription>
+                </div>
+                {dailyNotesChanged && (
+                    <Button onClick={handleSaveDailyNotes} disabled={isSavingNotes}>
+                        {isSavingNotes && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Daily Notes
+                    </Button>
+                )}
+            </CardHeader>
+            <CardContent>
+                <ScrollArea className="h-[500px] pr-3">
+                    {renderDailyNotesInputs()}
+                </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
-

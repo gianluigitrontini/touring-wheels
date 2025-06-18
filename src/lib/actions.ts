@@ -70,8 +70,8 @@ const getMockDB = (): GlobalMockDB => {
     console.log("Seeding initial mock trips into MOCK_DB_INSTANCE.");
     const baseDate = new Date(); // Current date as a starting point for mock data
 
-    const trip1Date = new Date(baseDate); // Create a new Date object for trip1
-    trip1Date.setDate(baseDate.getDate() - 2); // Set trip1Date two days ago
+    const trip1Date = new Date(baseDate); 
+    trip1Date.setDate(baseDate.getDate() - 2); 
     const trip1Id = "mockId1";
     db.trips.set(trip1Id, {
         id: trip1Id,
@@ -81,11 +81,14 @@ const getMockDB = (): GlobalMockDB => {
         createdAt: trip1Date,
         updatedAt: trip1Date,
         parsedGpx: [], weatherWaypoints: [], selectedGearIds: ["g1", "g2", "g5", "g8"], packedItems: {"g5": ["g8"]},
-        bikeId: "b1"
+        bikeId: "b1",
+        status: 'planned',
+        durationDays: 7,
+        dailyNotes: { 1: "Started from Santa Monica. Beautiful weather!", 2: "Cycled to Malibu. Saw dolphins."}
     });
 
-    const trip2Date = new Date(baseDate); // Create a new Date object for trip2
-    trip2Date.setDate(baseDate.getDate() - 1); // Set trip2Date one day ago
+    const trip2Date = new Date(baseDate); 
+    trip2Date.setDate(baseDate.getDate() - 1); 
     const trip2Id = "mockId2";
     db.trips.set(trip2Id, {
         id: trip2Id,
@@ -95,7 +98,10 @@ const getMockDB = (): GlobalMockDB => {
         createdAt: trip2Date,
         updatedAt: trip2Date,
         parsedGpx: [], weatherWaypoints: [], selectedGearIds: ["g1", "g3", "g6", "g12", "g13"], packedItems: {"g6": ["g12", "g13"]},
-        bikeId: "b2"
+        bikeId: "b2",
+        status: 'completed',
+        durationDays: 10,
+        dailyNotes: {1: "Day 1: Arrived in Denver.", 5: "Day 5: Climbed a major pass!"}
     });
     console.log("Initial mock trips seeded. Count:", db.trips.size);
   }
@@ -105,7 +111,7 @@ const getMockDB = (): GlobalMockDB => {
     initialMockGearData.forEach(item => db.gearItems.set(item.id, {
         ...item, 
         itemType: item.itemType || 'item',
-        category: item.category || 'Miscellaneous' // Ensure category is set
+        category: item.category || 'Miscellaneous' 
     }));
     console.log("Initial mock gear items seeded. Count:", db.gearItems.size);
   }
@@ -150,6 +156,9 @@ export async function saveTripAction(tripData: Omit<Trip, 'id' | 'createdAt' | '
         selectedGearIds: tripData.selectedGearIds || [],
         packedItems: tripData.packedItems || {},
         bikeId: tripData.bikeId || undefined,
+        status: 'planned', // Default status
+        durationDays: tripData.durationDays,
+        dailyNotes: {}, // Default empty daily notes
         id,
         createdAt: now,
         updatedAt: now,
@@ -194,6 +203,9 @@ export async function getTripAction(tripId: string): Promise<Trip | null> {
             selectedGearIds: trip.selectedGearIds || [],
             packedItems: trip.packedItems || {},
             bikeId: trip.bikeId || undefined,
+            status: trip.status || 'planned',
+            durationDays: trip.durationDays,
+            dailyNotes: trip.dailyNotes || {},
         };
     }
     console.log("Trip not found with ID:", tripId);
@@ -209,6 +221,9 @@ export async function getTripsAction(): Promise<Trip[]> {
         selectedGearIds: trip.selectedGearIds || [],
         packedItems: trip.packedItems || {},
         bikeId: trip.bikeId || undefined,
+        status: trip.status || 'planned',
+        durationDays: trip.durationDays,
+        dailyNotes: trip.dailyNotes || {},
     }));
     return tripsArray.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }

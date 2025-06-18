@@ -1,3 +1,4 @@
+
 # Touring Wheels - Feature Checklist
 
 This document outlines the features implemented in the Touring Wheels application and a list of potential future enhancements.
@@ -17,12 +18,16 @@ This document outlines the features implemented in the Touring Wheels applicatio
 
 ### My Trips
 - [x] List existing trips (`/trips`)
+    - [x] Filter trips by "Planned" and "Completed" status via sidebar links and on-page filters.
 - [x] Create new trip page (`/trips/new`)
     - [x] Input for Trip Name
     - [x] Input for Trip Description (optional)
+    - [x] Input for Trip Duration (days)
     - [x] GPX file upload component
 - [x] Trip Detail Page (`/trips/[tripId]`)
     - [x] Display Trip Name and Description
+    - [x] Display Trip Duration
+    - [x] Display and allow changing Trip Status (Planned/Completed)
     - [x] Tabbed Interface:
         - [x] **Route & Map Tab**:
             - [x] Display GPX route on Leaflet/OpenStreetMap
@@ -39,7 +44,11 @@ This document outlines the features implemented in the Touring Wheels applicatio
                 - [x] Unpack items from containers
                 - [x] Display total weight of selected gear
             - [x] Save gear selections and packing state for the trip
+        - [x] **Travel Diary Tab**:
+            - [x] View and edit notes for each day of the trip (based on trip duration)
+            - [x] Save daily notes
 - [x] Client-side mock deletion of trips from the list
+- [x] Sidebar links for "Planned" and "Completed" trips below "My Trips"
 
 ### Gear Library
 - [x] Gear Library Page (`/gear`)
@@ -84,10 +93,17 @@ This document outlines the features implemented in the Touring Wheels applicatio
 
 ## To-Do / Future Enhancements
 
+### Next improvements
+- [x] Add "Completed" and "Planned" below "My Trips" in the sidebar. Allow filtering trips for those values.
+- [x] Allow defining how many days a trip will last.
+- [x] Add "Notes" for each day of the trip.
+- [x] Add "Travel Diary" inside a trip to show all notes for a trip.
+
+
 ### Core Functionality
 - [ ] **User Authentication & Authorization**
 - [ ] **Real Database Integration** (e.g., Firebase Firestore, Supabase, PostgreSQL)
-- [ ] **Full Trip Editing Functionality** (implement `/trips/[tripId]/edit` page)
+- [ ] **Full Trip Editing Functionality** (implement `/trips/[tripId]/edit` page for all fields like duration, notes, etc.)
 - [ ] **Persistent Image Uploads** (e.g., Firebase Storage, Cloudinary) instead of Data URIs / temporary client URLs
 - [ ] **Associate a specific Bike Model with a Trip**
 
@@ -117,6 +133,7 @@ This document outlines the features implemented in the Touring Wheels applicatio
 - [ ] Internationalization (i18n) and Localization (l10n)
 - [ ] Accessibility (ARIA attributes, keyboard navigation) improvements
 - [ ] More sophisticated filtering and sorting for lists (Trips, Gear)
+- [ ] Improve sidebar sub-item visual hierarchy/interaction
 
 ### Technical & Backend
 - [ ] **Unit and Integration Tests** (e.g., Jest, React Testing Library, Playwright)
@@ -132,3 +149,4 @@ This document outlines the features implemented in the Touring Wheels applicatio
 ### Settings
 - [ ] User profile page
 - [ ] Application settings (e.g., default units, map preferences)
+

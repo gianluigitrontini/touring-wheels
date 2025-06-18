@@ -40,6 +40,9 @@ export interface Trip {
   bikeId?: string; // ID of the BikeModel used for THIS trip
   createdAt: Date;
   updatedAt: Date;
+  status?: 'planned' | 'completed'; // New: Trip status
+  durationDays?: number; // New: Duration of the trip in days
+  dailyNotes?: Record<number, string>; // New: Notes for each day, e.g., { 1: "Note for day 1" }
 }
 
 // Represents a point in a GPX track

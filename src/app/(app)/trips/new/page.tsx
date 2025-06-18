@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { GpxUpload } from "@/components/map/gpx-upload";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { saveTripAction } from "@/lib/actions"; 
 import type { Trip } from "@/lib/types";
@@ -21,6 +21,7 @@ export default function NewTripPage() {
   const [tripDescription, setTripDescription] = useState("");
   const [gpxData, setGpxData] = useState<string | null>(null);
   const [gpxFileName, setGpxFileName] = useState<string | null>(null);
+  const [durationDays, setDurationDays] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -40,6 +41,13 @@ export default function NewTripPage() {
       toast({ title: "GPX File Required", description: "Please upload a GPX file for your trip route.", variant: "destructive" });
       return;
     }
+    
+    const duration = durationDays ? parseInt(durationDays, 10) : undefined;
+    if (durationDays && (isNaN(duration!) || duration! <= 0)) {
+      toast({ title: "Invalid Duration", description: "Trip duration must be a positive number.", variant: "destructive"});
+      return;
+    }
+
 
     setIsSaving(true);
     try {
@@ -47,11 +55,14 @@ export default function NewTripPage() {
         name: tripName,
         description: tripDescription,
         gpxData: gpxData,
+        durationDays: duration,
         parsedGpx: [], 
         weatherWaypoints: [],
-        gearList: [],
-        selectedGearIds: [], // Initialize selectedGearIds
-        bikeId: undefined, // Initialize bikeId
+        gearList: [], // This field is deprecated / not used, selectedGearIds is used
+        selectedGearIds: [], 
+        bikeId: undefined, 
+        status: 'planned',
+        dailyNotes: {},
       };
       const newTrip = await saveTripAction(tripToSave);
       
@@ -114,6 +125,22 @@ export default function NewTripPage() {
                 placeholder="Describe your trip, key locations, goals, etc."
                 rows={4}
                 className="text-base"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="durationDays" className="text-lg font-medium flex items-center">
+                <CalendarClock className="mr-2 h-5 w-5 text-muted-foreground"/>
+                Trip Duration (Days)
+              </Label>
+              <Input
+                id="durationDays"
+                type="number"
+                value={durationDays}
+                onChange={(e) => setDurationDays(e.target.value)}
+                placeholder="e.g., 14"
+                min="1"
+                className="text-base w-full sm:w-1/2"
               />
             </div>
 
