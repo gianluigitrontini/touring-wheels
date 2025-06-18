@@ -1,17 +1,17 @@
 /* Import Leaflet CSS */
-@import 'leaflet/dist/leaflet.css';
+@import "leaflet/dist/leaflet.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  font-family: "Inter", Arial, Helvetica, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: 220 27% 93%; /* Light Gray #E8EBF2 */
+    --background: 220 27% 98%; /* Light Gray #E8EBF2 */
     --foreground: 215 25% 27%; /* Darker Slate Blue for text */
     --card: 220 27% 98%; /* Lighter than background for cards */
     --card-foreground: 215 25% 27%;
@@ -21,7 +21,7 @@ body {
     --primary-foreground: 0 0% 98%; /* Light color for text on primary */
     --secondary: 203 47% 82%; /* Lighter Muted Cyan */
     --secondary-foreground: 215 35% 37%;
-    --muted: 203 47% 88%; /* Very light Muted Cyan */
+    --muted: 200 32% 93%; /* Very light Muted Cyan */
     --muted-foreground: 215 20% 45%;
     --accent: 203 47% 72%; /* Muted Cyan #98C1D9 */
     --accent-foreground: 215 35% 27%; /* Darker color for text on accent */
@@ -38,7 +38,7 @@ body {
     --radius: 0.5rem;
 
     /* Sidebar specific theme */
-    --sidebar-background: 0 0% 97%; /* Slightly darker than primary */
+    --sidebar-background: 0 0% 99%; /* Slightly darker than primary */
     --sidebar-foreground: 0 0% 25%; /* Light gray for text */
     --sidebar-primary: 203 47% 72%; /* Accent for sidebar primary elements */
     --sidebar-primary-foreground: 215 35% 20%; /* Darker text on sidebar primary */

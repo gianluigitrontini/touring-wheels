@@ -1,9 +1,14 @@
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Map, ListChecks, Settings, Bike as BikeIcon } from "lucide-react"; // Renamed Bike to BikeIcon to avoid conflict
+import {
+  Home,
+  Map,
+  ListChecks,
+  Settings,
+  Bike as BikeIcon,
+} from "lucide-react"; // Renamed Bike to BikeIcon to avoid conflict
 import { cn } from "@/lib/utils";
 import {
   SidebarMenu,
@@ -34,17 +39,21 @@ export function SidebarNav() {
   return (
     <SidebarMenu>
       {navItems.map((item) => {
-        const isActive = item.matchSegments 
-          ? pathname.startsWith(item.href) && pathname.split('/').length >= item.href.split('/').length
+        const isActive = item.matchSegments
+          ? pathname.startsWith(item.href) &&
+            pathname.split("/").length >= item.href.split("/").length
           : pathname === item.href;
-        
+
         return (
           <SidebarMenuItem key={item.label}>
             <Link href={item.href}>
               <SidebarMenuButton
+                size={"lg"}
                 className={cn(
                   "font-medium",
-                  isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
                 isActive={isActive}
                 tooltip={item.label}
