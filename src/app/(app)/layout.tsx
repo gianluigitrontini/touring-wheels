@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider defaultOpen={true} collapsible="icon">
+    <SidebarProvider defaultOpen={true}>
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="items-center">
           <Link href="/dashboard" className="flex items-center gap-2 mb-4">
