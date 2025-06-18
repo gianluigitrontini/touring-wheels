@@ -3,14 +3,14 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { MapDisplay } from "@/components/map/map-display";
+import dynamic from 'next/dynamic'; // Import dynamic
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Trip, Waypoint, GearItem } from "@/lib/types";
 import { getAIWeatherPoints, getTripAction, getGearItemsAction, updateTripAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, XCircle, Tag } from "lucide-react";
+import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, XCircle, Tag, PackageCheck } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Dynamically import MapDisplay
+const MapDisplay = dynamic(() => import('@/components/map/map-display').then(mod => mod.MapDisplay), {
+  ssr: false,
+  loading: () => <div className="h-[500px] w-full flex items-center justify-center bg-muted rounded-lg"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2 text-muted-foreground">Loading map...</p></div>,
+});
 
 
 export default function TripDetailPage() {
@@ -208,7 +214,7 @@ export default function TripDetailPage() {
 
 
     const originalPacked = JSON.stringify(trip.packedItems || {});
-    const currentPacked = JSON.stringify(currentPackedItems); // currentPackedItems is already initialized
+    const currentPacked = JSON.stringify(currentPackedItems); 
     if (originalPacked !== currentPacked) return true;
     
     return false;
@@ -217,7 +223,7 @@ export default function TripDetailPage() {
   const { topLevelSelectedItems, looseSelectedItems } = useMemo(() => {
     const packedItemIds = new Set(Object.values(currentPackedItems).flat());
     const topLevelItems = selectedGearDetails.filter(item => !packedItemIds.has(item.id) || item.itemType === 'container');
-    const looseItems = topLevelItems.filter(item => item.itemType !== 'container'); // Loose items cannot be containers themselves
+    const looseItems = topLevelItems.filter(item => item.itemType !== 'container'); 
     return { topLevelSelectedItems: topLevelItems, looseSelectedItems: looseItems };
   }, [selectedGearDetails, currentPackedItems]);
 
@@ -400,7 +406,7 @@ export default function TripDetailPage() {
                                         <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "gear"} width={40} height={40} className="rounded object-cover" />
                                       ) : (
                                         <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
-                                          {item.itemType === 'container' ? <Package className="h-5 w-5 text-secondary-foreground" /> : <ListChecks className="h-5 w-5 text-secondary-foreground" />}
+                                          {item.itemType === 'container' ? <PackageCheck className="h-5 w-5 text-secondary-foreground" /> : <ListChecks className="h-5 w-5 text-secondary-foreground" />}
                                         </div>
                                       )}
                                     </div>
@@ -530,3 +536,4 @@ export default function TripDetailPage() {
     </div>
   );
 }
+
