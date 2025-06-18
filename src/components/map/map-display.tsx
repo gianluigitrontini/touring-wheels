@@ -9,11 +9,6 @@ import GpxParser from "gpxparser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Fix for default marker icons in Leaflet with bundlers like Webpack/Next.js
-// Ensure these image paths are correct relative to your public folder or that they are properly imported/handled by Next.js
-// For Next.js, you might need to ensure these are in the `public` directory and reference them correctly,
-// or use a library like `next/image` if you were to customize them further with Image components (not directly applicable here for L.Icon.Default).
-// This setup assumes Leaflet's images are correctly found by the bundler or available via its CSS.
-// If issues persist, direct import of image assets might be needed.
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -47,6 +42,11 @@ function FitBounds({ bounds }: { bounds: LatLngBoundsExpression | undefined }) {
 export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayProps) {
   const [parsedTrack, setParsedTrack] = useState<ParsedGpxTrack | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+
+  // Generate a unique key for the MapContainer.
+  // This ensures that if MapDisplay is unmounted and remounted (e.g. tab switch),
+  // MapContainer is treated as a new instance, preventing initialization errors.
+  const mapKey = useMemo(() => Date.now() + Math.random(), []);
 
   useEffect(() => {
     if (gpxData) {
@@ -115,15 +115,12 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
 
   return (
     <div className={`h-[500px] w-full rounded-lg overflow-hidden shadow-md ${className}`}>
-      <MapContainer 
+      <MapContainer
+        key={mapKey} // Add key here
         center={defaultCenter} 
         zoom={defaultZoom} 
         scrollWheelZoom={true} 
         style={{ height: "100%", width: "100%" }}
-        whenCreated={(mapInstance) => {
-            // Example: force a resize if layout issues occur, though often not needed
-            // setTimeout(() => mapInstance.invalidateSize(), 100);
-        }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -154,3 +151,4 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
     </div>
   );
 }
+
