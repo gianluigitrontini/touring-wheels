@@ -51,7 +51,6 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
   // It might have performance implications if MapDisplay re-renders frequently.
   const mapKey = Date.now() + Math.random();
 
-
   useEffect(() => {
     setIsClientSide(true);
   }, []);
