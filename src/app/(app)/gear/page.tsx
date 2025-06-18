@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Trash2, Edit3, ListChecks, Weight, Image as ImageIcon, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Edit3, ListChecks, Weight, Image as ImageIcon, Loader2, Package, PackageCheck } from "lucide-react";
 import type { GearItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image'; 
@@ -19,10 +19,10 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-import { getGearItemsAction } from "@/lib/actions"; // Import server action to fetch gear
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { getGearItemsAction, addGearItemAction, updateGearItemAction, deleteGearItemAction } from "@/lib/actions";
+import { Textarea } from "@/components/ui/textarea";
 
-// The add, edit, delete server actions for gear are not yet implemented.
-// For now, these operations will be client-side only after fetching initial data.
 
 export default function GearPage() {
   const [gearItems, setGearItems] = useState<GearItem[]>([]);
@@ -35,6 +35,9 @@ export default function GearPage() {
   const [itemNotes, setItemNotes] = useState("");
   const [itemImage, setItemImage] = useState<string | null>(null);
   const [itemImageFile, setItemImageFile] = useState<File | null>(null);
+  const [itemType, setItemType] = useState<'item' | 'container'>('item');
+  const [itemAiHint, setItemAiHint] = useState("");
+
 
   const { toast } = useToast();
 
@@ -62,6 +65,8 @@ export default function GearPage() {
     setItemImage(null);
     setItemImageFile(null);
     setEditingItem(null);
+    setItemType("item");
+    setItemAiHint("");
   };
 
   const handleOpenModal = (item?: GearItem) => {
@@ -71,6 +76,8 @@ export default function GearPage() {
       setItemWeight(item.weight.toString());
       setItemNotes(item.notes || "");
       setItemImage(item.imageUrl || null);
+      setItemType(item.itemType || "item");
+      setItemAiHint(item["data-ai-hint"] || "");
     } else {
       resetForm();
     }
@@ -82,7 +89,7 @@ export default function GearPage() {
     setItemImageFile(file); 
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName || !itemWeight) {
         toast({title: "Missing Fields", description: "Name and weight are required.", variant: "destructive"});
@@ -94,30 +101,50 @@ export default function GearPage() {
         return;
     }
 
-    // TODO: Replace with server action for saving/updating gear
-    const newItem: GearItem = {
-      id: editingItem ? editingItem.id : Math.random().toString(36).substring(7), // Temporary ID generation
+    const gearData: Omit<GearItem, 'id'> = {
       name: itemName,
       weight: weightNum,
       notes: itemNotes,
-      imageUrl: itemImage || (itemImageFile ? URL.createObjectURL(itemImageFile) : undefined), 
+      imageUrl: itemImage || (itemImageFile ? URL.createObjectURL(itemImageFile) : undefined),
+      itemType: itemType,
+      "data-ai-hint": itemAiHint || itemName.toLowerCase().split(" ").slice(0,2).join(" "),
     };
 
-    if (editingItem) {
-      setGearItems(gearItems.map(item => item.id === editingItem.id ? newItem : item));
-      toast({title: "Gear Item Updated (Locally)", description: `${newItem.name} has been updated.`});
-    } else {
-      setGearItems([...gearItems, newItem]);
-      toast({title: "Gear Item Added (Locally)", description: `${newItem.name} has been added to your library.`});
+    try {
+      if (editingItem) {
+        const updated = await updateGearItemAction(editingItem.id, gearData);
+        if (updated) {
+          setGearItems(gearItems.map(item => item.id === editingItem.id ? updated : item));
+          toast({title: "Gear Item Updated", description: `${updated.name} has been updated.`});
+        } else {
+           toast({title: "Update Failed", description: "Could not update the item.", variant: "destructive"});
+        }
+      } else {
+        const added = await addGearItemAction(gearData);
+        setGearItems([...gearItems, added]);
+        toast({title: "Gear Item Added", description: `${added.name} has been added to your library.`});
+      }
+      setIsModalOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error("Failed to save gear item:", error);
+      toast({title: "Save Error", description: "Could not save the gear item.", variant: "destructive"});
     }
-    setIsModalOpen(false);
-    resetForm();
   };
 
-  const handleDelete = (itemId: string) => {
-    // TODO: Replace with server action for deleting gear
-    setGearItems(gearItems.filter(item => item.id !== itemId));
-    toast({title: "Gear Item Deleted (Locally)"});
+  const handleDelete = async (itemId: string) => {
+    try {
+      const success = await deleteGearItemAction(itemId);
+      if (success) {
+        setGearItems(gearItems.filter(item => item.id !== itemId));
+        toast({title: "Gear Item Deleted"});
+      } else {
+        toast({title: "Delete Failed", description: "Could not delete the item.", variant: "destructive"});
+      }
+    } catch (error) {
+      console.error("Failed to delete gear item:", error);
+      toast({title: "Delete Error", description: "Could not delete the gear item.", variant: "destructive"});
+    }
   }
 
   if (isLoading) {
@@ -156,11 +183,16 @@ export default function GearPage() {
             <Card key={item.id} className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardHeader className="relative p-0">
                 {item.imageUrl ? (
-                   <Image src={item.imageUrl} alt={item.name} data-ai-hint="bicycle equipment" width={300} height={200} className="object-cover w-full h-48 rounded-t-lg" />
+                   <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "bicycle equipment"} width={300} height={200} className="object-cover w-full h-48 rounded-t-lg" />
                 ) : (
                   <div className="w-full h-48 rounded-t-lg bg-secondary flex items-center justify-center">
-                    <ListChecks className="w-16 h-16 text-secondary-foreground/50" />
+                    {item.itemType === 'container' ? <PackageCheck className="w-16 h-16 text-secondary-foreground/50" /> : <ListChecks className="w-16 h-16 text-secondary-foreground/50" /> }
                   </div>
+                )}
+                 {item.itemType === 'container' && (
+                    <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 text-xs rounded-full font-semibold flex items-center gap-1">
+                        <Package size={14}/> Bag
+                    </div>
                 )}
               </CardHeader>
               <CardContent className="flex-grow pt-4">
@@ -204,8 +236,25 @@ export default function GearPage() {
                 <Input id="itemWeight" type="number" value={itemWeight} onChange={e => setItemWeight(e.target.value)} className="col-span-3" placeholder="e.g., 1200" required />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="itemNotes" className="text-right">Notes</Label>
-                <Input id="itemNotes" value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="col-span-3" placeholder="e.g., Brand, capacity, features" />
+                <Label htmlFor="itemType" className="text-right">Type</Label>
+                <RadioGroup value={itemType} onValueChange={(value: 'item' | 'container') => setItemType(value)} className="col-span-3 flex gap-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="item" id="type-item" />
+                        <Label htmlFor="type-item" className="font-normal">Regular Item</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="container" id="type-container" />
+                        <Label htmlFor="type-container" className="font-normal">Bag/Container</Label>
+                    </div>
+                </RadioGroup>
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="itemNotes" className="text-right pt-1">Notes</Label>
+                <Textarea id="itemNotes" value={itemNotes} onChange={e => setItemNotes(e.target.value)} className="col-span-3" placeholder="e.g., Brand, capacity, features" rows={3}/>
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                 <Label htmlFor="itemAiHint" className="text-right pt-1">AI Hint</Label>
+                 <Input id="itemAiHint" value={itemAiHint} onChange={e => setItemAiHint(e.target.value)} className="col-span-3" placeholder="e.g., tent camping (for image search)" />
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label className="text-right pt-2">Image</Label>
@@ -220,7 +269,7 @@ export default function GearPage() {
                         reader.readAsDataURL(file);
                       }
                   }} className="text-sm"/>
-                  {itemImage && <Image src={itemImage} alt="Preview" data-ai-hint="gear preview" width={100} height={100} className="rounded border object-contain" />}
+                  {itemImage && <Image src={itemImage} alt="Preview" data-ai-hint={`${itemAiHint || 'gear'} preview`} width={100} height={100} className="rounded border object-contain" />}
                   {!itemImage && <div className="w-24 h-24 rounded border bg-muted flex items-center justify-center text-muted-foreground"><ImageIcon className="h-8 w-8"/></div>}
                 </div>
               </div>

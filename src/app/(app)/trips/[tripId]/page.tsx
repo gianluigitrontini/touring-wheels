@@ -10,12 +10,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Trip, Waypoint, GpxPoint, GearItem } from "@/lib/types";
 import { getAIWeatherPoints, getTripAction, getGearItemsAction, updateTripAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight } from "lucide-react";
+import { Loader2, MapPin, CloudDrizzle, ListChecks, ArrowLeft, Edit, Save, Settings2, Weight, Package, PackagePlus, PackageMinus, ChevronDown, ChevronRight, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Basic GPX Parser (very simplified) - this should ideally be a shared utility
 function parseGpxClient(gpxString: string): GpxPoint[] {
@@ -50,8 +57,10 @@ export default function TripDetailPage() {
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [activeTab, setActiveTab] = useState("map");
 
-  const [availableGear, setAvailableGear] = useState<GearItem[]>([]);
+  const [allGearLibrary, setAllGearLibrary] = useState<GearItem[]>([]);
   const [currentSelectedGearIds, setCurrentSelectedGearIds] = useState<string[]>([]);
+  const [currentPackedItems, setCurrentPackedItems] = useState<Record<string, string[]>>({});
+  
   const [isLoadingGear, setIsLoadingGear] = useState(false);
   const [isSavingGear, setIsSavingGear] = useState(false);
   
@@ -66,6 +75,7 @@ export default function TripDetailPage() {
           if (fetchedTrip) {
             setTrip(fetchedTrip);
             setCurrentSelectedGearIds(fetchedTrip.selectedGearIds || []);
+            setCurrentPackedItems(fetchedTrip.packedItems || {});
             if (fetchedTrip.gpxData) {
               setParsedGpx(parseGpxClient(fetchedTrip.gpxData));
             }
@@ -89,7 +99,7 @@ export default function TripDetailPage() {
       setIsLoadingGear(true);
       try {
         const gear = await getGearItemsAction();
-        setAvailableGear(gear);
+        setAllGearLibrary(gear);
       } catch (error) {
         console.error("Failed to fetch gear items:", error);
         toast({ title: "Error fetching gear", description: "Could not load available gear items.", variant: "destructive" });
@@ -119,20 +129,71 @@ export default function TripDetailPage() {
     }
   };
 
-  const handleToggleGearItem = (gearId: string) => {
-    setCurrentSelectedGearIds(prev =>
-      prev.includes(gearId) ? prev.filter(id => id !== gearId) : [...prev, gearId]
-    );
+  const handleToggleGearItemSelection = (gearId: string) => {
+    setCurrentSelectedGearIds(prev => {
+      const newSelection = prev.includes(gearId) ? prev.filter(id => id !== gearId) : [...prev, gearId];
+      // If item is deselected, also remove it from any packedItems structure
+      if (!newSelection.includes(gearId)) {
+        setCurrentPackedItems(prevPacked => {
+          const newPacked = { ...prevPacked };
+          delete newPacked[gearId]; // Remove if it was a container
+          for (const containerId in newPacked) { // Remove if it was packed in another container
+            newPacked[containerId] = newPacked[containerId].filter(id => id !== gearId);
+          }
+          return newPacked;
+        });
+      }
+      return newSelection;
+    });
   };
+
+  const handlePackItem = (itemIdToPack: string, containerId: string) => {
+    setCurrentPackedItems(prevPacked => {
+      const newPacked = { ...prevPacked };
+      // Ensure containerId is initialized
+      if (!newPacked[containerId]) {
+        newPacked[containerId] = [];
+      }
+      // Add itemIdToPack if not already there
+      if (!newPacked[containerId].includes(itemIdToPack)) {
+        newPacked[containerId] = [...newPacked[containerId], itemIdToPack];
+      }
+      // Remove itemIdToPack from any other container it might have been in
+      for (const cId in newPacked) {
+        if (cId !== containerId) {
+          newPacked[cId] = newPacked[cId].filter(id => id !== itemIdToPack);
+        }
+      }
+      return newPacked;
+    });
+  };
+  
+  const handleUnpackItem = (itemIdToUnpack: string, containerId?: string) => {
+     setCurrentPackedItems(prevPacked => {
+      const newPacked = { ...prevPacked };
+      if (containerId && newPacked[containerId]) {
+        newPacked[containerId] = newPacked[containerId].filter(id => id !== itemIdToUnpack);
+        if (newPacked[containerId].length === 0) {
+          // delete newPacked[containerId]; // Optional: remove empty container from packedItems
+        }
+      }
+      return newPacked;
+    });
+  };
+
 
   const handleSaveGearSelections = async () => {
     if (!trip) return;
     setIsSavingGear(true);
     try {
-      const updatedTrip = await updateTripAction(trip.id, { selectedGearIds: currentSelectedGearIds });
+      const updatedTrip = await updateTripAction(trip.id, { 
+        selectedGearIds: currentSelectedGearIds,
+        packedItems: currentPackedItems 
+      });
       if (updatedTrip) {
-        setTrip(updatedTrip); // Update local trip state with the full updated trip from server
-        setCurrentSelectedGearIds(updatedTrip.selectedGearIds); // Ensure currentSelectedGearIds is also in sync
+        setTrip(updatedTrip); 
+        setCurrentSelectedGearIds(updatedTrip.selectedGearIds); 
+        setCurrentPackedItems(updatedTrip.packedItems || {});
         toast({ title: "Gear Selections Saved", description: "Your gear list for this trip has been updated." });
       } else {
         toast({ title: "Error Saving Gear", description: "Could not save gear selections.", variant: "destructive" });
@@ -145,24 +206,46 @@ export default function TripDetailPage() {
     }
   };
 
-  const selectedGearItems = useMemo(() => {
-    return availableGear.filter(item => currentSelectedGearIds.includes(item.id));
-  }, [availableGear, currentSelectedGearIds]);
+  const selectedGearDetails = useMemo(() => {
+    return allGearLibrary.filter(item => currentSelectedGearIds.includes(item.id));
+  }, [allGearLibrary, currentSelectedGearIds]);
 
   const totalSelectedGearWeight = useMemo(() => {
-    return selectedGearItems.reduce((total, item) => total + item.weight, 0);
-  }, [selectedGearItems]);
+    return selectedGearDetails.reduce((total, item) => total + item.weight, 0);
+  }, [selectedGearDetails]);
 
   const gearSelectionChanged = useMemo(() => {
     if (!trip) return false;
-    const originalSet = new Set(trip.selectedGearIds || []);
-    const currentSet = new Set(currentSelectedGearIds);
-    if (originalSet.size !== currentSet.size) return true;
-    for (const id of originalSet) {
-      if (!currentSet.has(id)) return true;
+    const originalSelectedSet = new Set(trip.selectedGearIds || []);
+    const currentSelectedSet = new Set(currentSelectedGearIds);
+    if (originalSelectedSet.size !== currentSelectedSet.size) return true;
+    for (const id of originalSelectedSet) {
+      if (!currentSelectedSet.has(id)) return true;
     }
+
+    const originalPacked = JSON.stringify(trip.packedItems || {});
+    const currentPacked = JSON.stringify(currentPackedItems || {});
+    if (originalPacked !== currentPacked) return true;
+    
     return false;
-  }, [trip, currentSelectedGearIds]);
+  }, [trip, currentSelectedGearIds, currentPackedItems]);
+
+  const { topLevelItems, looseItems } = useMemo(() => {
+    const packedItemIds = new Set(Object.values(currentPackedItems).flat());
+    const topLevelItems = selectedGearDetails.filter(item => !packedItemIds.has(item.id));
+    const looseItems = topLevelItems.filter(item => item.itemType !== 'container');
+    return { topLevelItems, looseItems };
+  }, [selectedGearDetails, currentPackedItems]);
+
+
+  const getContainerForItem = (itemId: string): string | undefined => {
+    for (const containerId in currentPackedItems) {
+      if (currentPackedItems[containerId].includes(itemId)) {
+        return containerId;
+      }
+    }
+    return undefined;
+  };
 
 
   if (isLoading) {
@@ -202,7 +285,7 @@ export default function TripDetailPage() {
           <p className="text-muted-foreground ml-12 sm:ml-0">{trip.description || "No description provided."}</p>
         </div>
         <Button variant="outline" asChild>
-          <Link href={`/trips/${trip.id}/edit`}> {/* Assuming an edit page route */}
+          <Link href={`/trips/${trip.id}/edit`}>
             <Edit className="mr-2 h-4 w-4" /> Edit Trip
           </Link>
         </Button>
@@ -276,7 +359,7 @@ export default function TripDetailPage() {
             <CardHeader className="flex flex-row justify-between items-center">
               <div>
                 <CardTitle className="font-headline">Gear List for {trip.name}</CardTitle>
-                <CardDescription>Select and manage equipment for this trip. Total weight: {(totalSelectedGearWeight / 1000).toFixed(2)} kg</CardDescription>
+                <CardDescription>Select and manage equipment for this trip. Total weight of selected gear: {(totalSelectedGearWeight / 1000).toFixed(2)} kg</CardDescription>
               </div>
               {gearSelectionChanged && (
                 <Button onClick={handleSaveGearSelections} disabled={isSavingGear}>
@@ -291,33 +374,33 @@ export default function TripDetailPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <p className="ml-3 text-muted-foreground">Loading available gear...</p>
                 </div>
-              ) : availableGear.length === 0 ? (
+              ) : allGearLibrary.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">No gear items available in your library. <Link href="/gear" className="text-accent hover:underline">Add gear to your library</Link> to select for this trip.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
                   <div>
-                    <h3 className="text-lg font-semibold mb-3 text-primary flex items-center"><Settings2 className="mr-2 h-5 w-5"/>Available Gear Items</h3>
-                    <ScrollArea className="h-[400px] border rounded-md p-4 bg-muted/20">
+                    <h3 className="text-lg font-semibold mb-3 text-primary flex items-center"><Settings2 className="mr-2 h-5 w-5"/>Available Gear Library</h3>
+                    <ScrollArea className="h-[500px] border rounded-md p-4 bg-muted/20">
                       <div className="space-y-3">
-                        {availableGear.map(item => (
+                        {allGearLibrary.map(item => (
                           <div key={item.id} className="flex items-center space-x-3 p-2 bg-background rounded-md shadow-sm hover:bg-muted/50">
                             <Checkbox
-                              id={`gear-${item.id}`}
+                              id={`gear-select-${item.id}`}
                               checked={currentSelectedGearIds.includes(item.id)}
-                              onCheckedChange={() => handleToggleGearItem(item.id)}
+                              onCheckedChange={() => handleToggleGearItemSelection(item.id)}
                               aria-label={`Select ${item.name}`}
                             />
                              <div className="flex-shrink-0 w-10 h-10">
                               {item.imageUrl ? (
-                                <Image src={item.imageUrl} alt={item.name} data-ai-hint="gear" width={40} height={40} className="rounded object-cover" />
+                                <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "gear"} width={40} height={40} className="rounded object-cover" />
                               ) : (
                                 <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
-                                  <ListChecks className="h-5 w-5 text-secondary-foreground" />
+                                  {item.itemType === 'container' ? <Package className="h-5 w-5 text-secondary-foreground" /> : <ListChecks className="h-5 w-5 text-secondary-foreground" />}
                                 </div>
                               )}
                             </div>
-                            <Label htmlFor={`gear-${item.id}`} className="flex-grow cursor-pointer">
-                              <span className="font-medium text-foreground">{item.name}</span>
+                            <Label htmlFor={`gear-select-${item.id}`} className="flex-grow cursor-pointer">
+                              <span className="font-medium text-foreground">{item.name} {item.itemType === 'container' && '(Bag)'}</span>
                               <span className="text-xs text-muted-foreground block">{item.weight}g - {item.notes || "No notes"}</span>
                             </Label>
                           </div>
@@ -325,37 +408,104 @@ export default function TripDetailPage() {
                       </div>
                     </ScrollArea>
                   </div>
+                  
                   <div>
-                    <h3 className="text-lg font-semibold mb-3 text-primary flex items-center"><ListChecks className="mr-2 h-5 w-5"/>Selected for this Trip ({selectedGearItems.length})</h3>
-                    {selectedGearItems.length > 0 ? (
-                      <ScrollArea className="h-[400px] border rounded-md p-4">
-                        <div className="space-y-2">
-                          {selectedGearItems.map(item => (
-                            <Card key={`selected-${item.id}`} className="p-3 shadow-sm">
-                              <div className="flex items-center gap-3">
-                                 <div className="flex-shrink-0 w-12 h-12">
-                                {item.imageUrl ? 
-                                    <Image src={item.imageUrl} alt={item.name} data-ai-hint="bicycle gear" width={48} height={48} className="rounded object-cover"/> :
-                                    <div className="h-12 w-12 rounded bg-secondary flex items-center justify-center">
-                                        <ListChecks className="h-6 w-6 text-secondary-foreground"/>
-                                    </div>
-                                }
-                                </div>
-                                <div>
-                                    <p className="font-medium text-primary">{item.name}</p>
-                                    <p className="text-xs text-muted-foreground flex items-center"><Weight className="mr-1 h-3 w-3"/>{item.weight}g</p>
-                                    {item.notes && <p className="text-xs text-foreground/70 mt-0.5">{item.notes}</p>}
-                                </div>
-                              </div>
-                            </Card>
-                          ))}
+                    <h3 className="text-lg font-semibold mb-3 text-primary flex items-center"><ListChecks className="mr-2 h-5 w-5"/>Selected for this Trip ({selectedGearDetails.length})</h3>
+                     <ScrollArea className="h-[500px] border rounded-md p-1">
+                      {selectedGearDetails.length === 0 ? (
+                        <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
+                          <p className="text-muted-foreground text-center">No gear selected yet. <br/>Check items from the "Available Gear" list.</p>
                         </div>
-                      </ScrollArea>
-                    ) : (
-                      <div className="h-[400px] border rounded-md p-4 flex items-center justify-center bg-muted/20">
-                        <p className="text-muted-foreground text-center">No gear selected for this trip yet. <br/>Check items from the "Available Gear" list.</p>
-                      </div>
-                    )}
+                      ) : (
+                        <Accordion type="multiple" className="w-full">
+                          {topLevelItems.filter(item => item.itemType === 'container').map(containerItem => (
+                            <AccordionItem value={containerItem.id} key={`container-${containerItem.id}`} className="border-b-0 mb-1">
+                              <Card className="shadow-sm bg-card/50">
+                                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                  <div className="flex items-center gap-3 w-full">
+                                    <Package className="h-5 w-5 text-primary"/>
+                                    <span className="font-semibold text-primary">{containerItem.name}</span>
+                                    <span className="text-xs text-muted-foreground ml-auto mr-2">({(currentPackedItems[containerItem.id]?.length || 0)} items)</span>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-4 pb-3 pt-1">
+                                  <div className="space-y-2 ml-2 border-l pl-4 py-2">
+                                  {(currentPackedItems[containerItem.id] || []).map(packedItemId => {
+                                    const packedItem = allGearLibrary.find(g => g.id === packedItemId);
+                                    if (!packedItem) return null;
+                                    return (
+                                      <div key={packedItemId} className="flex items-center justify-between text-sm p-1.5 rounded bg-background/70 hover:bg-background">
+                                        <span className="text-foreground">{packedItem.name} <span className="text-xs text-muted-foreground">({packedItem.weight}g)</span></span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleUnpackItem(packedItemId, containerItem.id)}>
+                                          <XCircle size={16}/> <span className="sr-only">Unpack</span>
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
+                                  {(!currentPackedItems[containerItem.id] || currentPackedItems[containerItem.id].length === 0) && (
+                                      <p className="text-xs text-muted-foreground italic py-1">This bag is empty.</p>
+                                  )}
+                                  </div>
+                                </AccordionContent>
+                              </Card>
+                            </AccordionItem>
+                          ))}
+
+                          {looseItems.length > 0 && (
+                            <AccordionItem value="loose-items" className="border-b-0">
+                               <Card className="shadow-sm mt-2">
+                                <AccordionTrigger className="px-4 py-3 hover:no-underline bg-muted/30 rounded-t-md">
+                                    <div className="flex items-center gap-3 w-full">
+                                        <ListChecks className="h-5 w-5 text-muted-foreground"/>
+                                        <span className="font-semibold text-muted-foreground">Loose / Unpacked Items</span>
+                                        <span className="text-xs text-muted-foreground ml-auto mr-2">({looseItems.length} items)</span>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-4 pb-3 pt-2">
+                                  <div className="space-y-2">
+                                    {looseItems.map(item => (
+                                      <Card key={`loose-${item.id}`} className="p-3 shadow-none bg-background/50">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-2">
+                                            {item.imageUrl ? 
+                                                <Image src={item.imageUrl} alt={item.name} data-ai-hint={item['data-ai-hint'] || "bicycle gear"} width={32} height={32} className="rounded object-cover"/> :
+                                                <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
+                                                    <ListChecks className="h-4 w-4 text-secondary-foreground"/>
+                                                </div>
+                                            }
+                                            <div>
+                                                <p className="font-medium text-primary text-sm">{item.name}</p>
+                                                <p className="text-xs text-muted-foreground flex items-center"><Weight className="mr-1 h-3 w-3"/>{item.weight}g</p>
+                                            </div>
+                                          </div>
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="outline" size="sm" className="h-8 px-2">
+                                                <PackagePlus size={16} className="mr-1.5"/> Pack In...
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              {selectedGearDetails.filter(g => g.itemType === 'container' && g.id !== item.id).length > 0 ?
+                                                selectedGearDetails.filter(g => g.itemType === 'container' && g.id !== item.id).map(container => (
+                                                  <DropdownMenuItem key={`pack-into-${container.id}`} onClick={() => handlePackItem(item.id, container.id)}>
+                                                    <Package size={14} className="mr-2"/> {container.name}
+                                                  </DropdownMenuItem>
+                                                )) :
+                                                <DropdownMenuItem disabled>No available bags selected</DropdownMenuItem>
+                                              }
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                      </Card>
+                                    ))}
+                                  </div>
+                                </AccordionContent>
+                               </Card>
+                            </AccordionItem>
+                          )}
+                        </Accordion>
+                      )}
+                    </ScrollArea>
                   </div>
                 </div>
               )}

@@ -1,3 +1,4 @@
+
 export interface Waypoint {
   latitude: number;
   longitude: number;
@@ -12,6 +13,8 @@ export interface GearItem {
   weight: number; // in grams
   imageUrl?: string;
   notes?: string;
+  itemType?: 'item' | 'container'; // New: To identify if it can act as a bag
+  'data-ai-hint'?: string;
 }
 
 export interface BikeModel {
@@ -31,8 +34,8 @@ export interface Trip {
   gpxData?: string; // Store raw GPX string
   parsedGpx?: { lat: number; lon: number }[]; // Parsed coordinates for map display
   weatherWaypoints?: Waypoint[];
-  // gearList?: GearItem[]; // This was a bit ambiguous; selectedGearIds is the source of truth for trip-specific gear.
-  selectedGearIds: string[]; // IDs of GearItems specifically selected for THIS trip
+  selectedGearIds: string[]; // IDs of ALL GearItems selected for THIS trip (includes containers)
+  packedItems?: Record<string, string[]>; // New: Maps container item ID to array of contained item IDs for THIS trip
   bikeId?: string; // ID of the BikeModel used for THIS trip
   createdAt: Date;
   updatedAt: Date;
