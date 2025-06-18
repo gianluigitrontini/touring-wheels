@@ -73,7 +73,7 @@ function WaypointsRenderer({
       newMarkers.forEach(marker => marker.setMap(null));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [map, waypoints]); // onWaypointClick can cause re-renders if not stable, but should be ok here
+  }, [map, waypoints]); // onWaypointClick might need to be memoized or handled if it changes frequently
 
   return null;
 }
@@ -102,8 +102,6 @@ function CustomInfoWindow({
     }
     
     return () => {
-      // Clean up listener when map or onClose changes, or component unmounts.
-      // This might be too aggressive if map instance is stable.
       if (infoWindowRef.current) {
         google.maps.event.clearInstanceListeners(infoWindowRef.current);
       }
@@ -117,7 +115,7 @@ function CustomInfoWindow({
 
     if (waypoint) {
       const contentDiv = document.createElement('div');
-      contentDiv.className = "p-2 max-w-xs"; // Tailwind classes should apply if globals.css is loaded
+      contentDiv.className = "p-2 max-w-xs"; 
       contentDiv.innerHTML = `
         <h4 class="font-semibold text-md mb-1 text-primary">${waypoint.name || "Weather Info"}</h4>
         <p class="text-sm text-foreground/80 mb-1"><strong>Reason:</strong> ${waypoint.reason}</p>
@@ -245,8 +243,7 @@ export function MapDisplay({ gpxPoints: initialGpxPoints, weatherWaypoints, clas
   );
 }
 
-// Basic GPX Parser (client-side) - This function is not directly related to the error but part of the file.
-// No changes needed here for this specific error.
+// Basic GPX Parser (client-side) 
 function parseGpxClient(gpxString: string): GpxPoint[] {
   const points: GpxPoint[] = [];
   if (!gpxString) return points;
@@ -268,3 +265,4 @@ function parseGpxClient(gpxString: string): GpxPoint[] {
   }
   return points;
 }
+
