@@ -23,6 +23,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getGearItemsAction, addGearItemAction, updateGearItemAction, deleteGearItemAction } from "@/lib/actions";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 export default function GearPage() {
   const [gearItems, setGearItems] = useState<GearItem[]>([]);
@@ -56,6 +58,11 @@ export default function GearPage() {
     };
     fetchGear();
   }, [toast]);
+
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set(gearItems.map(item => item.category).filter(Boolean) as string[]);
+    return Array.from(categories).sort((a, b) => a.localeCompare(b));
+  }, [gearItems]);
 
   const resetForm = () => {
     setItemName("");
@@ -278,7 +285,17 @@ export default function GearPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="itemCategory" className="text-right">Category</Label>
-                <Input id="itemCategory" value={itemCategory} onChange={e => setItemCategory(e.target.value)} className="col-span-3" placeholder="e.g., Sleeping, Cooking, Bags" />
+                <Select value={itemCategory} onValueChange={setItemCategory}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Miscellaneous">Miscellaneous</SelectItem>
+                    {uniqueCategories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="itemType" className="text-right">Type</Label>
@@ -331,3 +348,4 @@ export default function GearPage() {
     </div>
   );
 }
+
