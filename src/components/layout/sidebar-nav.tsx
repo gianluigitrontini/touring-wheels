@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Map, ListChecks, Settings, Bike } from "lucide-react";
+import { Home, Map, ListChecks, Settings, Bike as BikeIcon } from "lucide-react"; // Renamed Bike to BikeIcon to avoid conflict
 import { cn } from "@/lib/utils";
 import {
   SidebarMenu,
@@ -21,8 +21,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home, matchSegments: 1 },
-  { href: "/trips", label: "My Trips", icon: Bike, matchSegments: 1 },
+  { href: "/trips", label: "My Trips", icon: Map, matchSegments: 1 }, // Changed Icon for Trips for clarity
   { href: "/gear", label: "Gear Library", icon: ListChecks, matchSegments: 1 },
+  { href: "/bikes", label: "My Bikes", icon: BikeIcon, matchSegments: 1 },
   // Add more items as needed, e.g., Settings
   // { href: "/settings", label: "Settings", icon: Settings, matchSegments: 1 },
 ];
@@ -59,4 +60,3 @@ export function SidebarNav() {
     </SidebarMenu>
   );
 }
-

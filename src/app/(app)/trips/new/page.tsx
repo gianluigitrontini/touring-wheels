@@ -12,7 +12,7 @@ import { GpxUpload } from "@/components/map/gpx-upload";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
-import { saveTripAction } from "@/lib/actions"; // Import the server action
+import { saveTripAction } from "@/lib/actions"; 
 import type { Trip } from "@/lib/types";
 
 
@@ -43,15 +43,15 @@ export default function NewTripPage() {
 
     setIsSaving(true);
     try {
-      // Use the server action to save the trip
       const tripToSave: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'> = {
         name: tripName,
         description: tripDescription,
         gpxData: gpxData,
-        // Initialize optional fields if necessary, or let the server action handle defaults
         parsedGpx: [], 
         weatherWaypoints: [],
         gearList: [],
+        selectedGearIds: [], // Initialize selectedGearIds
+        bikeId: undefined, // Initialize bikeId
       };
       const newTrip = await saveTripAction(tripToSave);
       
@@ -59,7 +59,7 @@ export default function NewTripPage() {
         title: "Trip Saved!",
         description: `Your trip "${newTrip.name}" has been created.`,
       });
-      router.push(`/trips/${newTrip.id}`); // Navigate to the new trip's page
+      router.push(`/trips/${newTrip.id}`); 
     } catch (error) {
       console.error("Failed to save trip:", error);
       toast({

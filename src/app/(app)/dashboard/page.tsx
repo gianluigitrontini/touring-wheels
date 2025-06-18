@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Bike, ListChecks } from "lucide-react";
+import { PlusCircle, Bike, ListChecks, MapIcon } from "lucide-react"; // Replaced Bike with MapIcon for My Trips
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -20,7 +20,7 @@ export default function DashboardPage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary font-headline">
-              <Bike className="h-6 w-6" />
+              <MapIcon className="h-6 w-6" /> {/* Changed icon */}
               My Trips
             </CardTitle>
             <CardDescription>View and manage your planned bicycle tours.</CardDescription>
@@ -53,6 +53,24 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary font-headline">
+              <Bike className="h-6 w-6" />
+              My Bikes
+            </CardTitle>
+            <CardDescription>Manage your collection of bicycles.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Keep track of your bikes and their specifications.
+            </p>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
+              <Link href="/bikes">Manage Bikes</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-full lg:col-span-1">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-primary font-headline">
@@ -72,6 +90,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Gear Items Logged:</span>
+                    <span className="font-semibold text-primary">0</span>
+                </div>
+                 <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Bikes Logged:</span>
                     <span className="font-semibold text-primary">0</span>
                 </div>
             </CardContent>

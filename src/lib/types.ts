@@ -14,6 +14,16 @@ export interface GearItem {
   notes?: string;
 }
 
+export interface BikeModel {
+  id: string;
+  name: string;
+  brand?: string;
+  model?: string;
+  year?: string; 
+  imageUrl?: string;
+  notes?: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -21,12 +31,11 @@ export interface Trip {
   gpxData?: string; // Store raw GPX string
   parsedGpx?: { lat: number; lon: number }[]; // Parsed coordinates for map display
   weatherWaypoints?: Waypoint[];
-  gearList?: GearItem[];
+  gearList?: GearItem[]; // This seems like a general gear list, perhaps for planning
+  selectedGearIds: string[]; // IDs of GearItems specifically selected for THIS trip
+  bikeId?: string; // ID of the BikeModel used for THIS trip
   createdAt: Date;
   updatedAt: Date;
-  // For distinguishing past/upcoming sections, we might add:
-  // currentProgressMarker?: { lat: number; lon: number }; 
-  // or completedSegments?: { startIdx: number, endIdx: number }[];
 }
 
 // Represents a point in a GPX track

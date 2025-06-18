@@ -2,11 +2,12 @@
 "use server";
 
 import { extractRelevantWeatherPoints, type ExtractRelevantWeatherPointsInput } from "@/ai/flows/extract-relevant-weather-points";
-import type { Trip, Waypoint } from "./types";
+import type { Trip, Waypoint, BikeModel } from "./types"; // Added BikeModel
 
 // Define a type for our global mock DB
 interface GlobalMockDB {
   trips: Map<string, Trip>;
+  bikeModels: Map<string, BikeModel>; // Added bikeModels
   // We can extend this for other mock data if needed, e.g., gearItems
 }
 
@@ -22,12 +23,10 @@ const getMockDB = (): GlobalMockDB => {
     console.log("Initializing MOCK_DB_INSTANCE on globalThis");
     globalThis.MOCK_DB_INSTANCE = {
       trips: new Map<string, Trip>(),
+      bikeModels: new Map<string, BikeModel>(), // Initialize bikeModels map
     };
     
-    // Initialize with some mock data ONLY if the map is truly empty after creation
     const db = globalThis.MOCK_DB_INSTANCE;
-    // This check is a bit redundant now as it's initialized empty above, 
-    // but kept for clarity or if initialization logic changes.
     if (db.trips.size === 0) {
         console.log("Seeding initial mock trips into MOCK_DB_INSTANCE");
         const now = new Date();
@@ -36,10 +35,10 @@ const getMockDB = (): GlobalMockDB => {
             id: trip1Id,
             name: "Coastal Cruise California",
             description: "A scenic ride along the Pacific Coast Highway.",
-            gpxData: "<?xml version=\"1.0\"?><gpx><trk><trkseg><trkpt lat=\"34.0522\" lon=\"-118.2437\"></trkpt><trkpt lat=\"34.0520\" lon=\"-118.2430\"></trkpt></trkseg></trk></gpx>",
-            createdAt: new Date(now.setDate(now.getDate() - 2)), // Ensure different creation dates
+            gpxData: "<?xml version=\"1.0\"?><gpx><trk><trkseg><trkpt lat=\"34.0522\" lon=\"-118.2437\"></trkpt><trkpt lat=\"34.0520\" lon=\"-118.2430\"></trkseg></trk></gpx>",
+            createdAt: new Date(now.setDate(now.getDate() - 2)),
             updatedAt: new Date(now.setDate(now.getDate() - 2)),
-            parsedGpx: [], weatherWaypoints: [], gearList: [],
+            parsedGpx: [], weatherWaypoints: [], gearList: [], selectedGearIds: [],
         });
         const trip2Id = "mockId2";
         db.trips.set(trip2Id, {
@@ -49,10 +48,12 @@ const getMockDB = (): GlobalMockDB => {
             gpxData: "<?xml version=\"1.0\"?><gpx><trk><trkseg><trkpt lat=\"39.7392\" lon=\"-104.9903\"></trkpt><trkpt lat=\"39.7400\" lon=\"-104.9910\"></trkseg></trk></gpx>",
             createdAt: new Date(now.setDate(now.getDate() - 1)),
             updatedAt: new Date(now.setDate(now.getDate() - 1)),
-            parsedGpx: [], weatherWaypoints: [], gearList: [],
+            parsedGpx: [], weatherWaypoints: [], gearList: [], selectedGearIds: [],
         });
         console.log("Initial mock trips seeded. Count:", db.trips.size);
     }
+    // Could seed mock bikes here too if desired
+    // if (db.bikeModels.size === 0) { ... }
   }
   return globalThis.MOCK_DB_INSTANCE;
 };
@@ -81,13 +82,19 @@ export async function getAIWeatherPoints(gpxData: string, tripDescription?: stri
 export async function saveTripAction(tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>): Promise<Trip> {
     const MOCK_DB = getMockDB();
     console.log("Server Action: Saving trip", tripData.name);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate DB latency
+    await new Promise(resolve => setTimeout(resolve, 100)); 
     
-    // Improved ID generation for more uniqueness, especially with HMR
     const id = Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
     const now = new Date();
     const newTrip: Trip = {
-        ...tripData,
+        name: tripData.name,
+        description: tripData.description,
+        gpxData: tripData.gpxData,
+        parsedGpx: tripData.parsedGpx || [],
+        weatherWaypoints: tripData.weatherWaypoints || [],
+        gearList: tripData.gearList || [],
+        selectedGearIds: tripData.selectedGearIds || [], // Ensure selectedGearIds is initialized
+        bikeId: tripData.bikeId || undefined, // Ensure bikeId is initialized
         id,
         createdAt: now,
         updatedAt: now,
@@ -104,7 +111,12 @@ export async function getTripAction(tripId: string): Promise<Trip | null> {
     const trip = MOCK_DB.trips.get(tripId);
     if (trip) {
         console.log("Trip found:", trip.name);
-        return { ...trip }; // Return a copy to avoid direct mutation issues if any
+        // Ensure all fields are present, especially new ones with defaults
+        return { 
+            ...trip,
+            selectedGearIds: trip.selectedGearIds || [],
+            bikeId: trip.bikeId || undefined,
+        }; 
     }
     console.log("Trip not found with ID:", tripId);
     return null;
@@ -114,8 +126,11 @@ export async function getTripsAction(): Promise<Trip[]> {
     const MOCK_DB = getMockDB();
     console.log("Server Action: Getting all trips. Count:", MOCK_DB.trips.size);
     await new Promise(resolve => setTimeout(resolve, 100));
-    const tripsArray = Array.from(MOCK_DB.trips.values());
-    // Sort by creation date, newest first
+    const tripsArray = Array.from(MOCK_DB.trips.values()).map(trip => ({
+        ...trip,
+        selectedGearIds: trip.selectedGearIds || [], // Ensure default for all trips
+        bikeId: trip.bikeId || undefined,
+    }));
     return tripsArray.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
