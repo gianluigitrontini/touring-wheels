@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, MapPin, CalendarDays, Trash2, Edit3, Eye } from "lucide-react";
+import { PlusCircle, Eye, CalendarDays, Trash2, Edit3, Loader2 } from "lucide-react";
 import type { Trip } from "@/lib/types";
 import {
   AlertDialog,
@@ -16,47 +17,88 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { getTripsAction } from "@/lib/actions"; // Import server action
 
-// Mock data - replace with actual data fetching
-const mockTrips: Trip[] = [
-  {
-    id: "1",
-    name: "Coastal Cruise California",
-    description: "A scenic ride along the Pacific Coast Highway.",
-    gpxData: "mock_gpx_data_coastal.gpx",
-    createdAt: new Date("2023-05-10"),
-    updatedAt: new Date("2023-05-12"),
-  },
-  {
-    id: "2",
-    name: "Rocky Mountain Challenge",
-    description: "High altitude cycling through Colorado's Rockies.",
-    gpxData: "mock_gpx_data_rockies.gpx",
-    createdAt: new Date("2023-08-20"),
-    updatedAt: new Date("2023-08-22"),
-  },
-];
+// Placeholder for a potential server action to delete trips.
+// async function deleteTripServerAction(tripId: string): Promise<boolean> {
+//   console.log("Calling server to delete trip:", tripId);
+//   // This would interact with the MOCK_DB on the server via globalThis
+//   const MOCK_DB = (globalThis as any).MOCK_DB_INSTANCE;
+//   if (MOCK_DB && MOCK_DB.trips) {
+//     const deleted = MOCK_DB.trips.delete(tripId);
+//     if (deleted) {
+//        console.log("Trip deleted from MOCK_DB on server");
+//        return true;
+//     }
+//   }
+//   console.log("Trip not found in MOCK_DB on server for deletion");
+//   return false;
+// }
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Simulate fetching trips
-    setTrips(mockTrips);
-  }, []);
+    const fetchTrips = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedTrips = await getTripsAction();
+        setTrips(fetchedTrips.map(trip => ({
+          ...trip,
+          createdAt: new Date(trip.createdAt), // Ensure createdAt is a Date object
+          updatedAt: new Date(trip.updatedAt), // Ensure updatedAt is a Date object
+        })));
+      } catch (error) {
+        console.error("Failed to fetch trips:", error);
+        toast({ title: "Error fetching trips", description: "Could not load trips data.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTrips();
+  }, [toast]);
 
-  const handleDeleteTrip = (tripId: string) => {
-    // Simulate API call for deletion
-    console.log("Deleting trip:", tripId);
+  const handleDeleteTrip = async (tripId: string) => {
+    // For now, this is an optimistic client-side update.
+    // A full implementation would call a server action.
+    const tripNameToDelete = trips.find(t => t.id === tripId)?.name || "the trip";
     setTrips(prevTrips => prevTrips.filter(trip => trip.id !== tripId));
     toast({
-        title: "Trip Deleted",
-        description: "The trip has been successfully deleted.",
+        title: "Trip Removed (Locally)",
+        description: `"${tripNameToDelete}" has been removed from this view.`,
     });
+    
+    // Example of how it might work with a server action:
+    // try {
+    //   const success = await deleteTripServerAction(tripId);
+    //   if (success) {
+    //     toast({ title: "Trip Deleted", description: `"${tripNameToDelete}" has been successfully deleted.` });
+    //     // Optionally re-fetch or confirm client state matches server
+    //   } else {
+    //     toast({ title: "Deletion Failed", description: "Could not delete the trip on the server.", variant: "destructive" });
+    //     // Potentially re-fetch to revert optimistic update if needed
+    //     const fetchedTrips = await getTripsAction();
+    //     setTrips(fetchedTrips.map(trip => ({...trip, createdAt: new Date(trip.createdAt), updatedAt: new Date(trip.updatedAt)})));
+    //   }
+    // } catch (error) {
+    //   toast({ title: "Error Deleting Trip", description: (error as Error).message, variant: "destructive" });
+    //   const fetchedTrips = await getTripsAction();
+    //   setTrips(fetchedTrips.map(trip => ({...trip, createdAt: new Date(trip.createdAt), updatedAt: new Date(trip.updatedAt)})));
+    // }
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg text-muted-foreground">Loading trips...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -112,7 +154,8 @@ export default function TripsPage() {
                 </Button>
                 <div className="flex gap-2">
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" asChild>
-                  <Link href={`/trips/${trip.id}/edit`} aria-label="Edit trip"> {/* Assuming an edit page */}
+                  {/* The edit page /trips/[tripId]/edit doesn't exist yet. This link will 404. */}
+                  <Link href={`/trips/${trip.id}/edit`} aria-label="Edit trip"> 
                     <Edit3 className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -126,7 +169,7 @@ export default function TripsPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the trip "{trip.name}".
+                        This action cannot be undone. This will remove the trip "{trip.name}" from your list (locally).
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

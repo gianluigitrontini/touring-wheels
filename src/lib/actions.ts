@@ -1,27 +1,61 @@
+
 "use server";
 
 import { extractRelevantWeatherPoints, type ExtractRelevantWeatherPointsInput } from "@/ai/flows/extract-relevant-weather-points";
 import type { Trip, Waypoint } from "./types";
 
-// Basic GPX Parser (very simplified) to get coordinates for AI.
-// This is duplicated from MapDisplay for server-side use; consider centralizing.
-function parseGpxForAI(gpxString: string): { lat: number; lon: number }[] {
-  const points: { lat: number; lon: number }[] = [];
-  if (!gpxString) return points;
-
-  try {
-    // A more robust XML parser might be needed for complex GPX files on server.
-    // For now, using regex as a simple server-side alternative to DOMParser.
-    const pointRegex = /<trkpt\s+lat="([^"]+)"\s+lon="([^"]+)"/g;
-    let match;
-    while ((match = pointRegex.exec(gpxString)) !== null) {
-      points.push({ lat: parseFloat(match[1]), lon: parseFloat(match[2]) });
-    }
-  } catch (error) {
-    console.error("Error parsing GPX for AI:", error);
-  }
-  return points;
+// Define a type for our global mock DB
+interface GlobalMockDB {
+  trips: Map<string, Trip>;
+  // We can extend this for other mock data if needed, e.g., gearItems
 }
+
+// Custom type for globalThis to include our MOCK_DB_INSTANCE
+declare global {
+  // eslint-disable-next-line no-var
+  var MOCK_DB_INSTANCE: GlobalMockDB | undefined;
+}
+
+// Access or initialize MOCK_DB on globalThis
+const getMockDB = (): GlobalMockDB => {
+  if (!globalThis.MOCK_DB_INSTANCE) {
+    console.log("Initializing MOCK_DB_INSTANCE on globalThis");
+    globalThis.MOCK_DB_INSTANCE = {
+      trips: new Map<string, Trip>(),
+    };
+    
+    // Initialize with some mock data ONLY if the map is truly empty after creation
+    const db = globalThis.MOCK_DB_INSTANCE;
+    // This check is a bit redundant now as it's initialized empty above, 
+    // but kept for clarity or if initialization logic changes.
+    if (db.trips.size === 0) {
+        console.log("Seeding initial mock trips into MOCK_DB_INSTANCE");
+        const now = new Date();
+        const trip1Id = "mockId1";
+        db.trips.set(trip1Id, {
+            id: trip1Id,
+            name: "Coastal Cruise California",
+            description: "A scenic ride along the Pacific Coast Highway.",
+            gpxData: "<?xml version=\"1.0\"?><gpx><trk><trkseg><trkpt lat=\"34.0522\" lon=\"-118.2437\"></trkpt><trkpt lat=\"34.0520\" lon=\"-118.2430\"></trkpt></trkseg></trk></gpx>",
+            createdAt: new Date(now.setDate(now.getDate() - 2)), // Ensure different creation dates
+            updatedAt: new Date(now.setDate(now.getDate() - 2)),
+            parsedGpx: [], weatherWaypoints: [], gearList: [],
+        });
+        const trip2Id = "mockId2";
+        db.trips.set(trip2Id, {
+            id: trip2Id,
+            name: "Rocky Mountain Challenge",
+            description: "High altitude cycling through Colorado's Rockies.",
+            gpxData: "<?xml version=\"1.0\"?><gpx><trk><trkseg><trkpt lat=\"39.7392\" lon=\"-104.9903\"></trkpt><trkpt lat=\"39.7400\" lon=\"-104.9910\"></trkseg></trk></gpx>",
+            createdAt: new Date(now.setDate(now.getDate() - 1)),
+            updatedAt: new Date(now.setDate(now.getDate() - 1)),
+            parsedGpx: [], weatherWaypoints: [], gearList: [],
+        });
+        console.log("Initial mock trips seeded. Count:", db.trips.size);
+    }
+  }
+  return globalThis.MOCK_DB_INSTANCE;
+};
 
 
 export async function getAIWeatherPoints(gpxData: string, tripDescription?: string): Promise<Waypoint[]> {
@@ -29,7 +63,6 @@ export async function getAIWeatherPoints(gpxData: string, tripDescription?: stri
     throw new Error("GPX data is required to extract weather points.");
   }
 
-  // The AI flow expects the full GPX data string.
   const input: ExtractRelevantWeatherPointsInput = {
     gpxData,
     tripDescription: tripDescription || "A bicycle trip.",
@@ -40,24 +73,18 @@ export async function getAIWeatherPoints(gpxData: string, tripDescription?: stri
     return waypoints.map(wp => ({ ...wp, name: `AI Point: ${wp.reason.substring(0,20)}...` }));
   } catch (error) {
     console.error("Error getting AI weather points:", error);
-    // Depending on the error, you might want to return a specific error message or an empty array.
     throw new Error("Failed to fetch weather points from AI.");
   }
 }
 
 
-// Mock function for saving a trip. In a real app, this would interact with a database.
-// This is simplified and assumes client-side state management or redirection after save.
-// For full persistence, you'd use Firestore or another DB.
-const MOCK_DB = {
-    trips: new Map<string, Trip>()
-};
-
 export async function saveTripAction(tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>): Promise<Trip> {
+    const MOCK_DB = getMockDB();
     console.log("Server Action: Saving trip", tripData.name);
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate DB latency
+    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate DB latency
     
-    const id = Math.random().toString(36).substring(2, 15);
+    // Improved ID generation for more uniqueness, especially with HMR
+    const id = Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
     const now = new Date();
     const newTrip: Trip = {
         ...tripData,
@@ -66,25 +93,31 @@ export async function saveTripAction(tripData: Omit<Trip, 'id' | 'createdAt' | '
         updatedAt: now,
     };
     MOCK_DB.trips.set(id, newTrip);
-    console.log("Trip saved with ID:", id);
+    console.log("Trip saved with ID:", id, "Total trips in MOCK_DB:", MOCK_DB.trips.size);
     return newTrip;
 }
 
 export async function getTripAction(tripId: string): Promise<Trip | null> {
-    console.log("Server Action: Getting trip", tripId);
-    await new Promise(resolve => setTimeout(resolve, 200));
+    const MOCK_DB = getMockDB();
+    console.log("Server Action: Getting trip by ID:", tripId, ". Available IDs:", Array.from(MOCK_DB.trips.keys()));
+    await new Promise(resolve => setTimeout(resolve, 100));
     const trip = MOCK_DB.trips.get(tripId);
-    return trip || null;
+    if (trip) {
+        console.log("Trip found:", trip.name);
+        return { ...trip }; // Return a copy to avoid direct mutation issues if any
+    }
+    console.log("Trip not found with ID:", tripId);
+    return null;
 }
 
 export async function getTripsAction(): Promise<Trip[]> {
-    console.log("Server Action: Getting all trips");
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return Array.from(MOCK_DB.trips.values());
+    const MOCK_DB = getMockDB();
+    console.log("Server Action: Getting all trips. Count:", MOCK_DB.trips.size);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const tripsArray = Array.from(MOCK_DB.trips.values());
+    // Sort by creation date, newest first
+    return tripsArray.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-// Initialize with some mock data for trips list page
-if (MOCK_DB.trips.size === 0) {
-    saveTripAction({ name: "Coastal Cruise California", description: "A scenic ride along the Pacific Coast Highway.", gpxData: "<?xml version=\"1.0\"?><gpx><trk><trkseg><trkpt lat=\"34.0522\" lon=\"-118.2437\"></trkpt><trkpt lat=\"34.0520\" lon=\"-118.2430\"></trkpt></trkseg></trk></gpx>" });
-    saveTripAction({ name: "Rocky Mountain Challenge", description: "High altitude cycling through Colorado's Rockies.", gpxData: "<?xml version=\"1.0\"?><gpx><trk><trkseg><trkpt lat=\"39.7392\" lon=\"-104.9903\"></trkpt><trkpt lat=\"39.7400\" lon=\"-104.9910\"></trkpt></trkseg></trk></gpx>" });
-}
+// Ensure MOCK_DB is initialized when the module loads for the first time.
+getMockDB();
