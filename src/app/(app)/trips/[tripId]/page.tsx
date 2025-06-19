@@ -1,76 +1,66 @@
-
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Trip, Waypoint, GearItem } from "@/lib/types";
-import {
-  getAIWeatherPoints,
-  getTripAction,
-  getGearItemsAction,
-  updateTripAction,
-} from "@/lib/actions";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Loader2,
-  MapPin,
-  CloudDrizzle,
-  ListChecks,
-  ArrowLeft,
-  Edit,
-  Save,
-  Settings2,
-  Weight,
-  Package,
-  PackagePlus,
-  XCircle,
-  Tag,
-  PackageCheck,
-  CalendarClock,
-  BookOpen,
-  CheckCircle,
-  Zap,
-} from "lucide-react";
-import Link from "next/link";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import Image from "next/image";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
+import {
+  getAIWeatherPoints,
+  getGearItemsAction,
+  getTripAction,
+  updateTripAction,
+} from "@/lib/actions";
+import type { GearItem, Trip } from "@/lib/types";
+import {
+  ArrowLeft,
+  BookOpen,
+  CalendarClock,
+  CheckCircle,
+  Edit,
+  ListChecks,
+  Loader2,
+  MapPin,
+  Package,
+  PackageCheck,
+  PackagePlus,
+  Tag,
+  Weight,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import dynamic from "next/dynamic";
+import Image from "next/image";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const MapDisplay = dynamic(
   () => import("@/components/map/map-display").then((mod) => mod.MapDisplay),
@@ -452,9 +442,7 @@ export default function TripDetailPage() {
       <ScrollArea className="flex-grow min-h-0 h-[50vh] border rounded-md bg-muted/20">
         <Accordion
           type="multiple"
-          defaultValue={sortedAvailableCategories.map(
-            (cat) => `${cat}-dialog`
-          )}
+          defaultValue={sortedAvailableCategories.map((cat) => `${cat}-dialog`)}
           className="w-full space-y-2 p-2"
         >
           {sortedAvailableCategories.map((category) => (
@@ -509,8 +497,7 @@ export default function TripDetailPage() {
                         className="flex-grow cursor-pointer"
                       >
                         <span className="font-medium text-foreground">
-                          {item.name}{" "}
-                          {item.itemType === "container" && "(Bag)"}
+                          {item.name} {item.itemType === "container" && "(Bag)"}
                         </span>
                         <span className="text-xs text-muted-foreground block">
                           {item.weight}g - {item.notes || "No notes"}
@@ -534,7 +521,7 @@ export default function TripDetailPage() {
           <ListChecks className="mr-2 h-5 w-5" />
           Selected for this Trip ({selectedGearDetails.length})
         </h3>
-        <ScrollArea className="h-[300px] md:h-[500px] border rounded-md p-1">
+        <ScrollArea className="h-[300px] md:h-[500px]">
           {selectedGearDetails.length === 0 ? (
             <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
               <p className="text-muted-foreground text-center">
@@ -570,8 +557,7 @@ export default function TripDetailPage() {
                             {containerItem.name}
                           </span>
                           <span className="text-xs text-muted-foreground ml-auto mr-2">
-                            (
-                            {currentPackedItems[containerItem.id]?.length || 0}{" "}
+                            ({currentPackedItems[containerItem.id]?.length || 0}{" "}
                             items /{" "}
                             {currentPackedItems[containerItem.id]?.reduce(
                               (acc, packedId) =>
@@ -584,6 +570,7 @@ export default function TripDetailPage() {
                           </span>
                         </div>
                       </AccordionTrigger>
+
                       <AccordionContent className="px-4 pb-3 pt-1">
                         <div className="space-y-2 ml-2 border-l pl-4 py-2">
                           {(currentPackedItems[containerItem.id] || []).map(
@@ -593,31 +580,57 @@ export default function TripDetailPage() {
                               );
                               if (!packedItem) return null;
                               return (
-                                <div
-                                  key={`${packedItemId}-selected-packed`}
-                                  className="flex items-center justify-between text-sm p-1.5 rounded bg-background/70 hover:bg-background"
-                                >
-                                  <span className="text-foreground">
-                                    {packedItem.name}{" "}
-                                    <span className="text-xs text-muted-foreground">
-                                      ({packedItem.weight}g)
-                                    </span>
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                    onClick={() =>
-                                      handleUnpackItem(
-                                        packedItemId,
-                                        containerItem.id
-                                      )
-                                    }
+                                <>
+                                  <Card
+                                    key={`${packedItemId}-${containerItem.id}-selected-packed`}
+                                    className="p-3 shadow-none bg-background/50"
                                   >
-                                    <XCircle size={16} />{" "}
-                                    <span className="sr-only">Unpack</span>
-                                  </Button>
-                                </div>
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-2">
+                                        {packedItem.imageUrl ? (
+                                          <Image
+                                            src={packedItem.imageUrl}
+                                            alt={packedItem.name}
+                                            data-ai-hint={
+                                              packedItem["data-ai-hint"] ||
+                                              "bicycle gear"
+                                            }
+                                            width={32}
+                                            height={32}
+                                            className="rounded object-cover"
+                                          />
+                                        ) : (
+                                          <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
+                                            <ListChecks className="h-4 w-4 text-secondary-foreground" />
+                                          </div>
+                                        )}
+                                        <div>
+                                          <p className="font-medium text-primary text-sm">
+                                            {packedItem.name}
+                                          </p>
+                                          <p className="text-xs text-muted-foreground flex items-center">
+                                            <Weight className="mr-1 h-3 w-3" />
+                                            {packedItem.weight}g
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                        onClick={() =>
+                                          handleUnpackItem(
+                                            packedItemId,
+                                            containerItem.id
+                                          )
+                                        }
+                                      >
+                                        <XCircle size={16} />{" "}
+                                        <span className="sr-only">Unpack</span>
+                                      </Button>
+                                    </div>
+                                  </Card>
+                                </>
                               );
                             }
                           )}
@@ -633,6 +646,7 @@ export default function TripDetailPage() {
                     </Card>
                   </AccordionItem>
                 ))}
+
               {looseSelectedItems.length > 0 && (
                 <AccordionItem
                   value="loose-items-selected"
@@ -650,11 +664,12 @@ export default function TripDetailPage() {
                         </span>
                       </div>
                     </AccordionTrigger>
+
                     <AccordionContent className="px-4 pb-3 pt-2">
                       <div className="space-y-2">
-                        {looseSelectedItems.map((item) => (
+                        {looseSelectedItems.map((item, i) => (
                           <Card
-                            key={`loose-${item.id}-selected`}
+                            key={`loose-${item.id}-${i}selected`}
                             className="p-3 shadow-none bg-background/50"
                           >
                             <div className="flex items-center justify-between gap-3">
@@ -685,6 +700,7 @@ export default function TripDetailPage() {
                                   </p>
                                 </div>
                               </div>
+
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
@@ -692,10 +708,7 @@ export default function TripDetailPage() {
                                     size="sm"
                                     className="h-8 px-2"
                                   >
-                                    <PackagePlus
-                                      size={16}
-                                      className="mr-1.5"
-                                    />{" "}
+                                    <PackagePlus size={16} className="mr-1.5" />{" "}
                                     Pack In...
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -721,10 +734,7 @@ export default function TripDetailPage() {
                                             )
                                           }
                                         >
-                                          <Package
-                                            size={14}
-                                            className="mr-2"
-                                          />{" "}
+                                          <Package size={14} className="mr-2" />{" "}
                                           {container.name}
                                         </DropdownMenuItem>
                                       ))
@@ -818,36 +828,44 @@ export default function TripDetailPage() {
   return (
     <div className="container-default">
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Button variant="outline" size="icon" asChild>
-              <Link href="/trips">
-                <ArrowLeft className="h-5 w-5" />
-                <span className="sr-only">Back to Trips</span>
-              </Link>
-            </Button>
-            <h1 className="text-3xl font-bold text-primary font-headline">
+        <div className="flex flex-col md:flex-row items-start gap-3 mb-2">
+          <Button variant="outline" size="icon" asChild className="w-12 h-12">
+            <Link href="/trips">
+              <ArrowLeft className="h-5 w-5" />
+              <span className="sr-only">Back to Trips</span>
+            </Link>
+          </Button>
+
+          <div className="flex flex-col gap-1 items-start">
+            <h1 className="text-2xl font-bold text-primary font-headline">
               {trip.name}
             </h1>
-            <Badge
-              variant={trip.status === "completed" ? "default" : "secondary"}
-              className="capitalize text-sm py-1 px-3"
-            >
-              {trip.status || "Planned"}
-            </Badge>
-          </div>
-          <p className="text-muted-foreground ml-12 sm:ml-0">
-            {trip.description || "No description provided."}
-          </p>
-          {trip.durationDays && (
-            <p className="text-sm text-muted-foreground ml-12 sm:ml-0 mt-1 flex items-center">
-              <CalendarClock className="mr-1.5 h-4 w-4" /> Duration:{" "}
-              {trip.durationDays} day{trip.durationDays > 1 ? "s" : ""}
+
+            <p className="text-muted-foreground">
+              {trip.description || "No description provided."}
             </p>
-          )}
+            <div className="flex gap-2">
+              <Badge
+                variant={trip.status === "completed" ? "default" : "secondary"}
+                className="capitalize text-sm py-1 px-3"
+              >
+                {trip.status || "Planned"}
+              </Badge>
+              {trip.durationDays && (
+                <p className="text-sm text-muted-foreground flex items-center">
+                  <CalendarClock className="mr-1.5 h-4 w-4" />
+                  {trip.durationDays} day{trip.durationDays > 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center w-full sm:w-auto">
-          <Button variant="outline" onClick={handleChangeTripStatus} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={handleChangeTripStatus}
+            className="w-full sm:w-auto"
+          >
             {trip.status === "planned" ? (
               <CheckCircle className="mr-2 h-4 w-4" />
             ) : (
@@ -865,274 +883,151 @@ export default function TripDetailPage() {
         </div>
       </div>
 
-      {isMobile ? (
-        <div className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">
-                <MapPin className="h-5 w-5" /> Route & Map
-              </CardTitle>
-              <CardDescription>
-                Visualize your planned route. GPX data provided:{" "}
-                {trip.gpxData ? "Yes" : "No"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {trip.gpxData ||
-              (trip.weatherWaypoints && trip.weatherWaypoints.length > 0) ? (
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full mt-6"
+      >
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 mb-6 p-2">
+          <TabsTrigger value="map" className="text-base py-2.5">
+            <MapPin className="mr-2 h-5 w-5" />
+            Route & Map
+          </TabsTrigger>
+          <TabsTrigger value="gear" className="text-base py-2.5">
+            <ListChecks className="mr-2 h-5 w-5" />
+            Gear List
+          </TabsTrigger>
+          <TabsTrigger value="diary" className="text-base py-2.5">
+            <BookOpen className="mr-2 h-5 w-5" />
+            Travel Diary
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="map">
+          <div>
+            <div className="mb-4">
+              <CardTitle className="font-headline">Route Map</CardTitle>
+              <CardDescription>Visualize your planned route.</CardDescription>
+            </div>
+            {trip.gpxData ||
+            (trip.weatherWaypoints && trip.weatherWaypoints.length > 0) ? (
+              <>
                 <MapDisplay
                   gpxData={trip.gpxData}
                   weatherWaypoints={trip.weatherWaypoints}
                 />
-              ) : (
-                <p className="text-muted-foreground p-4 border rounded-md text-center">
-                  No GPX data or weather waypoints available for this trip.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">
-                <CloudDrizzle className="h-5 w-5" /> Weather
-              </CardTitle>
-              <CardDescription>
-                AI-suggested weather checkpoints.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                onClick={handleFetchWeatherPoints}
-                disabled={isLoadingWeather || !trip.gpxData}
-                className="mb-6"
-              >
-                {isLoadingWeather && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {trip.weatherWaypoints && trip.weatherWaypoints.length > 0
-                  ? "Refresh AI Weather Points"
-                  : "Get AI Weather Points"}
-              </Button>
-              {/* Weather points display */}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                    <CardTitle className="font-headline flex items-center gap-2"><ListChecks className="h-5 w-5" /> Gear List</CardTitle>
-                    <CardDescription>Total weight: {(totalSelectedGearWeight / 1000).toFixed(2)} kg.</CardDescription>
+                <div className="my-6 flex justify-between items-center border rounded-md p-4">
+                  <div>
+                    <CardTitle className="font-headline">
+                      Weather Along Route
+                    </CardTitle>
+                    <CardDescription>
+                      AI-suggested weather checkpoints.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={handleFetchWeatherPoints}
+                    disabled={isLoadingWeather || !trip.gpxData}
+                  >
+                    {isLoadingWeather && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {trip.weatherWaypoints && trip.weatherWaypoints.length > 0
+                      ? "Refresh AI Weather Points"
+                      : "Get AI Weather Points"}
+                  </Button>
                 </div>
-                {gearSelectionChanged && ( <Button onClick={handleSaveGearSelections} disabled={isSavingGear} size="sm">
-                    {isSavingGear && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Gear
-                </Button>)}
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                  <Dialog open={isAddGearModalOpen} onOpenChange={setIsAddGearModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full">
-                        <PackagePlus className="mr-2 h-4 w-4" />
-                        Add/Remove Gear from Library
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[calc(100vw-2rem)] max-h-[80vh] w-[calc(100vw-2rem)] flex flex-col">
-                      <DialogHeader>
-                        <DialogTitle>Available Gear Library</DialogTitle>
-                        <DialogDescription>Select items to add or remove them from your trip's gear list.</DialogDescription>
-                      </DialogHeader>
-                      {renderAvailableGearDialogContent()}
-                      <DialogFooter>
-                        <DialogClose asChild><Button type="button">Done</Button></DialogClose>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                 {renderSelectedGearContent()}
-              </div>
-            </CardContent>
-          </Card>
+              </>
+            ) : (
+              <p className="text-muted-foreground p-4 border rounded-md text-center">
+                No GPX data or weather waypoints available for this trip.
+              </p>
+            )}
+          </div>
+        </TabsContent>
 
-          <Button onClick={() => setMobileShowDiary(!mobileShowDiary)} variant="outline" className="w-full py-3 text-base">
-            <BookOpen className="mr-2 h-5 w-5" />
-            {mobileShowDiary ? "Hide Travel Diary" : "Show Travel Diary"}
-          </Button>
-          {mobileShowDiary && (
-            <Card>
-              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                 <div>
-                  <CardTitle className="font-headline flex items-center gap-2"><BookOpen className="h-5 w-5" /> Travel Diary</CardTitle>
-                  <CardDescription>Record your experiences for each day.</CardDescription>
-                 </div>
-                 {dailyNotesChanged && ( <Button onClick={handleSaveDailyNotes} disabled={isSavingNotes} size="sm">
-                  {isSavingNotes && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Notes
-                 </Button>)}
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px] pr-3">
-                  {renderDailyNotesInputs()}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-4 mb-6">
-            <TabsTrigger value="map" className="text-base py-2.5">
-              <MapPin className="mr-2 h-5 w-5" />
-              Route & Map
-            </TabsTrigger>
-            <TabsTrigger value="weather" className="text-base py-2.5">
-              <CloudDrizzle className="mr-2 h-5 w-5" />
-              Weather
-            </TabsTrigger>
-            <TabsTrigger value="gear" className="text-base py-2.5">
-              <ListChecks className="mr-2 h-5 w-5" />
-              Gear List
-            </TabsTrigger>
-            <TabsTrigger value="diary" className="text-base py-2.5">
-              <BookOpen className="mr-2 h-5 w-5" />
-              Travel Diary
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="map">
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-headline">Route Map</CardTitle>
-                <CardDescription>
-                  Visualize your planned route. GPX data provided:{" "}
-                  {trip.gpxData ? "Yes" : "No"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {trip.gpxData ||
-                (trip.weatherWaypoints && trip.weatherWaypoints.length > 0) ? (
-                  <MapDisplay
-                    gpxData={trip.gpxData}
-                    weatherWaypoints={trip.weatherWaypoints}
-                  />
-                ) : (
-                  <p className="text-muted-foreground p-4 border rounded-md text-center">
-                    No GPX data or weather waypoints available for this trip.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="weather">
-            <Card>
-              <CardHeader>
+        <TabsContent value="gear">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
                 <CardTitle className="font-headline">
-                  Weather Along Route
+                  Gear List for {trip.name}
                 </CardTitle>
                 <CardDescription>
-                  AI-suggested weather checkpoints.
+                  Manage equipment for this trip. Total weight:{" "}
+                  {(totalSelectedGearWeight / 1000).toFixed(2)} kg
                 </CardDescription>
-              </CardHeader>
-              <CardContent>
+              </div>
+              {gearSelectionChanged && (
                 <Button
-                  onClick={handleFetchWeatherPoints}
-                  disabled={isLoadingWeather || !trip.gpxData}
-                  className="mb-6"
+                  onClick={handleSaveGearSelections}
+                  disabled={isSavingGear}
                 >
-                  {isLoadingWeather && (
+                  {isSavingGear && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {trip.weatherWaypoints && trip.weatherWaypoints.length > 0
-                    ? "Refresh AI Weather Points"
-                    : "Get AI Weather Points"}
+                  Save Gear Changes
                 </Button>
-                {/* Weather points display */}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              )}
+            </div>
 
-          <TabsContent value="gear">
-            <Card>
-              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                  <CardTitle className="font-headline">
-                    Gear List for {trip.name}
-                  </CardTitle>
-                  <CardDescription>
-                    Manage equipment for this trip. Total weight: {(totalSelectedGearWeight / 1000).toFixed(2)}{" "}
-                    kg
-                  </CardDescription>
-                </div>
-                {gearSelectionChanged && (
-                  <Button
-                    onClick={handleSaveGearSelections}
-                    disabled={isSavingGear}
-                  >
-                    {isSavingGear && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Save Gear Changes
+            <div className="space-y-6">
+              <Dialog
+                open={isAddGearModalOpen}
+                onOpenChange={setIsAddGearModalOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <PackagePlus className="mr-2 h-4 w-4" />
+                    Add/Remove Gear from Library
                   </Button>
-                )}
-              </CardHeader>
-              <CardContent>
-                 <div className="space-y-6">
-                    <Dialog open={isAddGearModalOpen} onOpenChange={setIsAddGearModalOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto">
-                          <PackagePlus className="mr-2 h-4 w-4" />
-                          Add/Remove Gear from Library
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[700px] max-h-[80vh] flex flex-col">
-                        <DialogHeader>
-                          <DialogTitle>Available Gear Library</DialogTitle>
-                          <DialogDescription>Select items to add or remove them from your trip's gear list.</DialogDescription>
-                        </DialogHeader>
-                        {renderAvailableGearDialogContent()}
-                        <DialogFooter>
-                          <DialogClose asChild><Button type="button">Done</Button></DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                   {renderSelectedGearContent()}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[700px] max-h-[80vh] flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>Available Gear Library</DialogTitle>
+                    <DialogDescription>
+                      Select items to add or remove them from your trip's gear
+                      list.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {renderAvailableGearDialogContent()}
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button type="button">Done</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              {renderSelectedGearContent()}
+            </div>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="diary">
-            <Card>
-              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                  <CardTitle className="font-headline">Travel Diary</CardTitle>
-                  <CardDescription>
-                    Record your experiences for each day.
-                  </CardDescription>
-                </div>
-                {dailyNotesChanged && (
-                  <Button
-                    onClick={handleSaveDailyNotes}
-                    disabled={isSavingNotes}
-                  >
-                    {isSavingNotes && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Save Daily Notes
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px] pr-3">
-                  {renderDailyNotesInputs()}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      )}
+        <TabsContent value="diary">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <CardTitle className="font-headline">Travel Diary</CardTitle>
+                <CardDescription>
+                  Record your experiences for each day.
+                </CardDescription>
+              </div>
+              {dailyNotesChanged && (
+                <Button onClick={handleSaveDailyNotes} disabled={isSavingNotes}>
+                  {isSavingNotes && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save Daily Notes
+                </Button>
+              )}
+            </div>
+
+            <ScrollArea className="h-[500px] pr-3">
+              {renderDailyNotesInputs()}
+            </ScrollArea>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
-
