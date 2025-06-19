@@ -7,6 +7,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { AppHeader } from "@/components/layout/app-header"; // Import AppHeader
 import { MountainSnow } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -42,7 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col">
-        {/* <AppHeader /> */}
+        <AppHeader /> {/* Add the AppHeader here */}
         <main className="flex-1 overflow-y-auto bg-background">{children}</main>
       </SidebarInset>
     </SidebarProvider>
