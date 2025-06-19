@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -10,7 +11,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Trip, Waypoint, GearItem } from "@/lib/types";
@@ -60,6 +60,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsMobile } from "@/hooks/use-mobile"; // Added
 
 const MapDisplay = dynamic(
   () => import("@/components/map/map-display").then((mod) => mod.MapDisplay),
@@ -99,6 +100,9 @@ export default function TripDetailPage() {
   const [isLoadingGear, setIsLoadingGear] = useState(false);
   const [isSavingGear, setIsSavingGear] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const isMobile = useIsMobile(); // Added
+  const [mobileShowDiary, setMobileShowDiary] = useState(false); // Added
 
   const loadTripData = useCallback(async () => {
     setIsLoading(true);
@@ -166,11 +170,9 @@ export default function TripDetailPage() {
         trip.gpxData,
         trip.description
       );
-      // Update local trip state first for responsiveness
       setTrip((prevTrip) =>
         prevTrip ? { ...prevTrip, weatherWaypoints: waypoints } : null
       );
-      // Then update on the server
       await updateTripAction(trip.id, { weatherWaypoints: waypoints });
       toast({
         title: "Weather Points Loaded & Saved",
@@ -196,7 +198,8 @@ export default function TripDetailPage() {
       if (!newSelection.includes(gearId)) {
         setCurrentPackedItems((prevPacked) => {
           const newPacked = { ...prevPacked };
-          delete newPacked[gearId];
+          delete newPacked[gearId]; // Remove if it was a container
+          // Unpack item from any container it might have been in
           for (const containerId in newPacked) {
             newPacked[containerId] = newPacked[containerId].filter(
               (id) => id !== gearId
@@ -511,8 +514,8 @@ export default function TripDetailPage() {
             </p>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-          <Button variant="outline" onClick={handleChangeTripStatus}>
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center w-full sm:w-auto">
+          <Button variant="outline" onClick={handleChangeTripStatus} className="w-full sm:w-auto">
             {trip.status === "planned" ? (
               <CheckCircle className="mr-2 h-4 w-4" />
             ) : (
@@ -522,7 +525,7 @@ export default function TripDetailPage() {
               ? "Mark as Completed"
               : "Mark as Planned"}
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href={`/trips/${trip.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" /> Edit Trip Details
             </Link>
@@ -530,30 +533,14 @@ export default function TripDetailPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
-          <TabsTrigger value="map" className="text-base py-2.5">
-            <MapPin className="mr-2 h-5 w-5" />
-            Route & Map
-          </TabsTrigger>
-          <TabsTrigger value="weather" className="text-base py-2.5">
-            <CloudDrizzle className="mr-2 h-5 w-5" />
-            Weather
-          </TabsTrigger>
-          <TabsTrigger value="gear" className="text-base py-2.5">
-            <ListChecks className="mr-2 h-5 w-5" />
-            Gear List
-          </TabsTrigger>
-          <TabsTrigger value="diary" className="text-base py-2.5">
-            <BookOpen className="mr-2 h-5 w-5" />
-            Travel Diary
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="map">
+      {isMobile ? (
+        <div className="space-y-6 mt-6">
+          {/* Mobile: Route & Map Section */}
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline">Route Map</CardTitle>
+              <CardTitle className="font-headline flex items-center gap-2">
+                <MapPin className="h-5 w-5" /> Route & Map
+              </CardTitle>
               <CardDescription>
                 Visualize your planned route. GPX data provided:{" "}
                 {trip.gpxData ? "Yes" : "No"}
@@ -574,16 +561,15 @@ export default function TripDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="weather">
+          {/* Mobile: Weather Section */}
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline">
-                Weather Along Route
+              <CardTitle className="font-headline flex items-center gap-2">
+                <CloudDrizzle className="h-5 w-5" /> Weather
               </CardTitle>
               <CardDescription>
-                Get AI-suggested weather checkpoints and forecasts.
+                Get AI-suggested weather checkpoints.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -603,8 +589,7 @@ export default function TripDetailPage() {
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
                     The AI has identified {trip.weatherWaypoints.length}{" "}
-                    relevant points for weather checks. These are also visible
-                    on the map.
+                    relevant points for weather checks.
                   </p>
                   <ul className="list-disc pl-5 space-y-2">
                     {trip.weatherWaypoints.map((wp, idx) => (
@@ -628,40 +613,26 @@ export default function TripDetailPage() {
                 <p className="text-muted-foreground">
                   {isLoadingWeather
                     ? "Analyzing route..."
-                    : "Click the button above to let AI identify key weather checkpoints on your route."}
+                    : "Click the button above to let AI identify key weather checkpoints."}
                 </p>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="gear">
+          {/* Mobile: Gear List Section */}
           <Card className="shadow-lg">
-            <CardHeader className="flex flex-row justify-between items-center">
-              <div>
-                <CardTitle className="font-headline">
-                  Gear List for {trip.name}
-                </CardTitle>
-                <CardDescription>
-                  Select and manage equipment for this trip. Total weight of
-                  selected gear: {(totalSelectedGearWeight / 1000).toFixed(2)}{" "}
-                  kg
-                </CardDescription>
-              </div>
-              {gearSelectionChanged && (
-                <Button
-                  onClick={handleSaveGearSelections}
-                  disabled={isSavingGear}
-                >
-                  {isSavingGear && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Save Gear Changes
-                </Button>
-              )}
+            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <CardTitle className="font-headline flex items-center gap-2"><ListChecks className="h-5 w-5" /> Gear List</CardTitle>
+                    <CardDescription>Total weight: {(totalSelectedGearWeight / 1000).toFixed(2)} kg. Manage items below.</CardDescription>
+                </div>
+                {gearSelectionChanged && ( <Button onClick={handleSaveGearSelections} disabled={isSavingGear} size="sm">
+                    {isSavingGear && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Gear
+                </Button>)}
             </CardHeader>
             <CardContent>
-              {isLoadingGear ? (
+            {isLoadingGear ? (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <p className="ml-3 text-muted-foreground">
@@ -669,91 +640,38 @@ export default function TripDetailPage() {
                   </p>
                 </div>
               ) : allGearLibrary.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  No gear items available in your library.{" "}
+                 <p className="text-muted-foreground text-center py-4">
+                  No gear items available.{" "}
                   <Link href="/gear" className="text-accent hover:underline">
-                    Add gear to your library
-                  </Link>{" "}
-                  to select for this trip.
+                    Add to library
+                  </Link>.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+                <div className="grid grid-cols-1 gap-y-6">
                   <div>
                     <h3 className="text-lg font-semibold mb-3 text-primary flex items-center">
                       <Settings2 className="mr-2 h-5 w-5" />
                       Available Gear Library
                     </h3>
-                    <ScrollArea className="h-[500px] border rounded-md p-1 bg-muted/20">
-                      <Accordion
-                        type="multiple"
-                        defaultValue={sortedAvailableCategories}
-                        className="w-full space-y-2 p-2"
-                      >
+                    <ScrollArea className="h-[300px] border rounded-md p-1 bg-muted/20">
+                    <Accordion type="multiple" defaultValue={sortedAvailableCategories.slice(0,1)} className="w-full space-y-2 p-2">
                         {sortedAvailableCategories.map((category) => (
-                          <AccordionItem
-                            value={category}
-                            key={`available-${category}`}
-                            className="border bg-background rounded-md shadow-sm"
-                          >
+                          <AccordionItem value={category} key={`available-${category}-mobile`} className="border bg-background rounded-md shadow-sm">
                             <AccordionTrigger className="px-4 py-3 text-base font-medium text-primary hover:no-underline">
-                              <div className="flex items-center gap-2">
-                                <Tag className="h-5 w-5" />
-                                {category} (
-                                {groupedAvailableGear[category].length})
-                              </div>
+                              <div className="flex items-center gap-2"><Tag className="h-5 w-5" />{category} ({groupedAvailableGear[category].length})</div>
                             </AccordionTrigger>
                             <AccordionContent className="px-4 pb-3 pt-1">
                               <div className="space-y-2">
                                 {groupedAvailableGear[category].map((item) => (
-                                  <div
-                                    key={item.id}
-                                    className="flex items-center space-x-3 p-2 bg-card rounded-md shadow-sm hover:bg-card/80"
-                                  >
-                                    <Checkbox
-                                      id={`gear-select-${item.id}`}
-                                      checked={currentSelectedGearIds.includes(
-                                        item.id
-                                      )}
-                                      onCheckedChange={() =>
-                                        handleToggleGearItemSelection(item.id)
-                                      }
-                                      aria-label={`Select ${item.name}`}
-                                    />
+                                  <div key={`${item.id}-mobile`} className="flex items-center space-x-3 p-2 bg-card rounded-md shadow-sm hover:bg-card/80">
+                                    <Checkbox id={`gear-select-${item.id}-mobile`} checked={currentSelectedGearIds.includes(item.id)} onCheckedChange={() => handleToggleGearItemSelection(item.id)} aria-label={`Select ${item.name}`} />
                                     <div className="flex-shrink-0 w-10 h-10">
-                                      {item.imageUrl ? (
-                                        <Image
-                                          src={item.imageUrl}
-                                          alt={item.name}
-                                          data-ai-hint={
-                                            item["data-ai-hint"] || "gear"
-                                          }
-                                          width={40}
-                                          height={40}
-                                          className="rounded object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
-                                          {item.itemType === "container" ? (
-                                            <PackageCheck className="h-5 w-5 text-secondary-foreground" />
-                                          ) : (
-                                            <ListChecks className="h-5 w-5 text-secondary-foreground" />
-                                          )}
-                                        </div>
-                                      )}
+                                      {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} data-ai-hint={item["data-ai-hint"] || "gear"} width={40} height={40} className="rounded object-cover" />
+                                        : <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">{item.itemType === "container" ? <PackageCheck className="h-5 w-5 text-secondary-foreground" /> : <ListChecks className="h-5 w-5 text-secondary-foreground" />}</div>}
                                     </div>
-                                    <Label
-                                      htmlFor={`gear-select-${item.id}`}
-                                      className="flex-grow cursor-pointer"
-                                    >
-                                      <span className="font-medium text-foreground">
-                                        {item.name}{" "}
-                                        {item.itemType === "container" &&
-                                          "(Bag)"}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground block">
-                                        {item.weight}g -{" "}
-                                        {item.notes || "No notes"}
-                                      </span>
+                                    <Label htmlFor={`gear-select-${item.id}-mobile`} className="flex-grow cursor-pointer">
+                                      <span className="font-medium text-foreground">{item.name} {item.itemType === "container" && "(Bag)"}</span>
+                                      <span className="text-xs text-muted-foreground block">{item.weight}g - {item.notes || "No notes"}</span>
                                     </Label>
                                   </div>
                                 ))}
@@ -764,223 +682,64 @@ export default function TripDetailPage() {
                       </Accordion>
                     </ScrollArea>
                   </div>
-
                   <div>
                     <h3 className="text-lg font-semibold mb-3 text-primary flex items-center">
                       <ListChecks className="mr-2 h-5 w-5" />
                       Selected for this Trip ({selectedGearDetails.length})
                     </h3>
-                    <ScrollArea className="h-[500px] border rounded-md p-1">
+                     <ScrollArea className="h-[300px] border rounded-md p-1">
                       {selectedGearDetails.length === 0 ? (
-                        <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
-                          <p className="text-muted-foreground text-center">
-                            No gear selected yet. <br />
-                            Check items from the "Available Gear" list.
-                          </p>
-                        </div>
+                        <div className="h-full flex items-center justify-center bg-muted/20 rounded-md"><p className="text-muted-foreground text-center">No gear selected.</p></div>
                       ) : (
-                        <Accordion
-                          type="multiple"
-                          className="w-full"
-                          defaultValue={topLevelSelectedItems
-                            .filter((i) => i.itemType === "container")
-                            .map((i) => i.id)
-                            .concat(
-                              looseSelectedItems.length > 0
-                                ? ["loose-items"]
-                                : []
-                            )}
-                        >
-                          {topLevelSelectedItems
-                            .filter((item) => item.itemType === "container")
-                            .map((containerItem) => (
-                              <AccordionItem
-                                value={containerItem.id}
-                                key={`container-${containerItem.id}`}
-                                className="border-b-0 mb-1"
-                              >
-                                <Card className="shadow-sm bg-card/50">
-                                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                    <div className="flex items-center gap-3 w-full">
-                                      <Package className="h-5 w-5 text-primary" />
-                                      <span className="font-semibold text-primary">
-                                        {containerItem.name}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground ml-auto mr-2">
-                                        (
-                                        {currentPackedItems[containerItem.id]
-                                          ?.length || 0}{" "}
-                                        items /{" "}
-                                        {currentPackedItems[
-                                          containerItem.id
-                                        ]?.reduce(
-                                          (acc, packedId) =>
-                                            acc +
-                                            (allGearLibrary.find(
-                                              (g) => g.id === packedId
-                                            )?.weight || 0),
-                                          0
-                                        ) || 0}
-                                        g)
-                                      </span>
-                                    </div>
-                                  </AccordionTrigger>
-                                  <AccordionContent className="px-4 pb-3 pt-1">
-                                    <div className="space-y-2 ml-2 border-l pl-4 py-2">
-                                      {(
-                                        currentPackedItems[containerItem.id] ||
-                                        []
-                                      ).map((packedItemId) => {
-                                        const packedItem = allGearLibrary.find(
-                                          (g) => g.id === packedItemId
-                                        );
-                                        if (!packedItem) return null;
-                                        return (
-                                          <div
-                                            key={packedItemId}
-                                            className="flex items-center justify-between text-sm p-1.5 rounded bg-background/70 hover:bg-background"
-                                          >
-                                            <span className="text-foreground">
-                                              {packedItem.name}{" "}
-                                              <span className="text-xs text-muted-foreground">
-                                                ({packedItem.weight}g)
-                                              </span>
-                                            </span>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                              onClick={() =>
-                                                handleUnpackItem(
-                                                  packedItemId,
-                                                  containerItem.id
-                                                )
-                                              }
-                                            >
-                                              <XCircle size={16} />{" "}
-                                              <span className="sr-only">
-                                                Unpack
-                                              </span>
-                                            </Button>
-                                          </div>
-                                        );
-                                      })}
-                                      {(!currentPackedItems[containerItem.id] ||
-                                        currentPackedItems[containerItem.id]
-                                          .length === 0) && (
-                                        <p className="text-xs text-muted-foreground italic py-1">
-                                          This bag is empty. Pack items using
-                                          the dropdown on loose items.
-                                        </p>
-                                      )}
-                                    </div>
-                                  </AccordionContent>
-                                </Card>
-                              </AccordionItem>
-                            ))}
-
+                        <Accordion type="multiple" className="w-full" defaultValue={topLevelSelectedItems.filter(i => i.itemType === 'container').map(i => i.id).concat(looseSelectedItems.length > 0 ? ["loose-items-mobile"] : [])}>
+                          {topLevelSelectedItems.filter(item => item.itemType === "container").map(containerItem => (
+                            <AccordionItem value={containerItem.id} key={`container-${containerItem.id}-mobile`} className="border-b-0 mb-1">
+                              <Card className="shadow-sm bg-card/50">
+                                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                  <div className="flex items-center gap-3 w-full">
+                                    <Package className="h-5 w-5 text-primary" />
+                                    <span className="font-semibold text-primary">{containerItem.name}</span>
+                                    <span className="text-xs text-muted-foreground ml-auto mr-2">({currentPackedItems[containerItem.id]?.length || 0} items / {currentPackedItems[containerItem.id]?.reduce((acc, packedId) => acc + (allGearLibrary.find(g => g.id === packedId)?.weight || 0), 0) || 0}g)</span>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-4 pb-3 pt-1">
+                                  <div className="space-y-2 ml-2 border-l pl-4 py-2">
+                                    {(currentPackedItems[containerItem.id] || []).map(packedItemId => {
+                                      const packedItem = allGearLibrary.find(g => g.id === packedItemId); if (!packedItem) return null;
+                                      return (<div key={`${packedItemId}-mobile-packed`} className="flex items-center justify-between text-sm p-1.5 rounded bg-background/70 hover:bg-background">
+                                        <span className="text-foreground">{packedItem.name} <span className="text-xs text-muted-foreground">({packedItem.weight}g)</span></span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleUnpackItem(packedItemId, containerItem.id)}><XCircle size={16} /> <span className="sr-only">Unpack</span></Button>
+                                      </div>);
+                                    })}
+                                    {(!currentPackedItems[containerItem.id] || currentPackedItems[containerItem.id].length === 0) && <p className="text-xs text-muted-foreground italic py-1">Bag is empty.</p>}
+                                  </div>
+                                </AccordionContent>
+                              </Card>
+                            </AccordionItem>
+                          ))}
                           {looseSelectedItems.length > 0 && (
-                            <AccordionItem
-                              value="loose-items"
-                              className="border-b-0"
-                            >
+                            <AccordionItem value="loose-items-mobile" className="border-b-0">
                               <Card className="shadow-sm mt-2">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline bg-muted/30 rounded-t-md">
-                                  <div className="flex items-center gap-3 w-full">
-                                    <ListChecks className="h-5 w-5 text-muted-foreground" />
-                                    <span className="font-semibold text-muted-foreground">
-                                      Loose / Unpacked Items
-                                    </span>
-                                    <span className="text-xs text-muted-foreground ml-auto mr-2">
-                                      ({looseSelectedItems.length} items)
-                                    </span>
-                                  </div>
+                                  <div className="flex items-center gap-3 w-full"><ListChecks className="h-5 w-5 text-muted-foreground" /><span className="font-semibold text-muted-foreground">Loose / Unpacked Items</span><span className="text-xs text-muted-foreground ml-auto mr-2">({looseSelectedItems.length} items)</span></div>
                                 </AccordionTrigger>
                                 <AccordionContent className="px-4 pb-3 pt-2">
                                   <div className="space-y-2">
-                                    {looseSelectedItems.map((item) => (
-                                      <Card
-                                        key={`loose-${item.id}`}
-                                        className="p-3 shadow-none bg-background/50"
-                                      >
+                                    {looseSelectedItems.map(item => (
+                                      <Card key={`loose-${item.id}-mobile`} className="p-3 shadow-none bg-background/50">
                                         <div className="flex items-center justify-between gap-3">
                                           <div className="flex items-center gap-2">
-                                            {item.imageUrl ? (
-                                              <Image
-                                                src={item.imageUrl}
-                                                alt={item.name}
-                                                data-ai-hint={
-                                                  item["data-ai-hint"] ||
-                                                  "bicycle gear"
-                                                }
-                                                width={32}
-                                                height={32}
-                                                className="rounded object-cover"
-                                              />
-                                            ) : (
-                                              <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
-                                                <ListChecks className="h-4 w-4 text-secondary-foreground" />
-                                              </div>
-                                            )}
-                                            <div>
-                                              <p className="font-medium text-primary text-sm">
-                                                {item.name}
-                                              </p>
-                                              <p className="text-xs text-muted-foreground flex items-center">
-                                                <Weight className="mr-1 h-3 w-3" />
-                                                {item.weight}g
-                                              </p>
-                                            </div>
+                                            {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} data-ai-hint={item["data-ai-hint"] || "bicycle gear"} width={32} height={32} className="rounded object-cover" />
+                                              : <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center"><ListChecks className="h-4 w-4 text-secondary-foreground" /></div>}
+                                            <div><p className="font-medium text-primary text-sm">{item.name}</p><p className="text-xs text-muted-foreground flex items-center"><Weight className="mr-1 h-3 w-3" />{item.weight}g</p></div>
                                           </div>
                                           <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-8 px-2"
-                                              >
-                                                <PackagePlus
-                                                  size={16}
-                                                  className="mr-1.5"
-                                                />{" "}
-                                                Pack In...
-                                              </Button>
-                                            </DropdownMenuTrigger>
+                                            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 px-2"><PackagePlus size={16} className="mr-1.5" /> Pack In...</Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                              {selectedGearDetails.filter(
-                                                (g) =>
-                                                  g.itemType === "container" &&
-                                                  g.id !== item.id
-                                              ).length > 0 ? (
-                                                selectedGearDetails
-                                                  .filter(
-                                                    (g) =>
-                                                      g.itemType ===
-                                                        "container" &&
-                                                      g.id !== item.id
-                                                  )
-                                                  .map((container) => (
-                                                    <DropdownMenuItem
-                                                      key={`pack-into-${container.id}`}
-                                                      onClick={() =>
-                                                        handlePackItem(
-                                                          item.id,
-                                                          container.id
-                                                        )
-                                                      }
-                                                    >
-                                                      <Package
-                                                        size={14}
-                                                        className="mr-2"
-                                                      />{" "}
-                                                      {container.name}
-                                                    </DropdownMenuItem>
-                                                  ))
-                                              ) : (
-                                                <DropdownMenuItem disabled>
-                                                  No available bags selected
-                                                </DropdownMenuItem>
-                                              )}
+                                              {selectedGearDetails.filter(g => g.itemType === "container" && g.id !== item.id).length > 0 ?
+                                                selectedGearDetails.filter(g => g.itemType === "container" && g.id !== item.id).map(container => (
+                                                  <DropdownMenuItem key={`pack-into-${container.id}-mobile`} onClick={() => handlePackItem(item.id, container.id)}><Package size={14} className="mr-2" /> {container.name}</DropdownMenuItem>
+                                                )) : <DropdownMenuItem disabled>No available bags</DropdownMenuItem>}
                                             </DropdownMenuContent>
                                           </DropdownMenu>
                                         </div>
@@ -999,34 +758,535 @@ export default function TripDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="diary">
-          <Card className="shadow-lg">
-            <CardHeader className="flex flex-row justify-between items-center">
-              <div>
-                <CardTitle className="font-headline">Travel Diary</CardTitle>
+          {/* Mobile: Travel Diary Button & Section */}
+          <Button onClick={() => setMobileShowDiary(!mobileShowDiary)} variant="outline" className="w-full py-3 text-base">
+            <BookOpen className="mr-2 h-5 w-5" />
+            {mobileShowDiary ? "Hide Travel Diary" : "Show Travel Diary"}
+          </Button>
+          {mobileShowDiary && (
+            <Card className="shadow-lg">
+              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                 <div>
+                  <CardTitle className="font-headline flex items-center gap-2"><BookOpen className="h-5 w-5" /> Travel Diary</CardTitle>
+                  <CardDescription>Record your experiences for each day.</CardDescription>
+                 </div>
+                 {dailyNotesChanged && ( <Button onClick={handleSaveDailyNotes} disabled={isSavingNotes} size="sm">
+                  {isSavingNotes && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Notes
+                 </Button>)}
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[500px] pr-3">
+                  {renderDailyNotesInputs()}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-4 mb-6">
+            <TabsTrigger value="map" className="text-base py-2.5">
+              <MapPin className="mr-2 h-5 w-5" />
+              Route & Map
+            </TabsTrigger>
+            <TabsTrigger value="weather" className="text-base py-2.5">
+              <CloudDrizzle className="mr-2 h-5 w-5" />
+              Weather
+            </TabsTrigger>
+            <TabsTrigger value="gear" className="text-base py-2.5">
+              <ListChecks className="mr-2 h-5 w-5" />
+              Gear List
+            </TabsTrigger>
+            <TabsTrigger value="diary" className="text-base py-2.5">
+              <BookOpen className="mr-2 h-5 w-5" />
+              Travel Diary
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="map">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline">Route Map</CardTitle>
                 <CardDescription>
-                  Record your experiences for each day of the trip.
+                  Visualize your planned route. GPX data provided:{" "}
+                  {trip.gpxData ? "Yes" : "No"}
                 </CardDescription>
-              </div>
-              {dailyNotesChanged && (
-                <Button onClick={handleSaveDailyNotes} disabled={isSavingNotes}>
-                  {isSavingNotes && (
+              </CardHeader>
+              <CardContent>
+                {trip.gpxData ||
+                (trip.weatherWaypoints && trip.weatherWaypoints.length > 0) ? (
+                  <MapDisplay
+                    gpxData={trip.gpxData}
+                    weatherWaypoints={trip.weatherWaypoints}
+                  />
+                ) : (
+                  <p className="text-muted-foreground p-4 border rounded-md text-center">
+                    No GPX data or weather waypoints available to display the map
+                    for this trip.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="weather">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline">
+                  Weather Along Route
+                </CardTitle>
+                <CardDescription>
+                  Get AI-suggested weather checkpoints and forecasts.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={handleFetchWeatherPoints}
+                  disabled={isLoadingWeather || !trip.gpxData}
+                  className="mb-6"
+                >
+                  {isLoadingWeather && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Save Daily Notes
+                  {trip.weatherWaypoints && trip.weatherWaypoints.length > 0
+                    ? "Refresh AI Weather Points"
+                    : "Get AI Weather Points"}
                 </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px] pr-3">
-                {renderDailyNotesInputs()}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                {trip.weatherWaypoints && trip.weatherWaypoints.length > 0 ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      The AI has identified {trip.weatherWaypoints.length}{" "}
+                      relevant points for weather checks. These are also visible
+                      on the map.
+                    </p>
+                    <ul className="list-disc pl-5 space-y-2">
+                      {trip.weatherWaypoints.map((wp, idx) => (
+                        <li key={idx} className="text-foreground/90">
+                          <span className="font-semibold">
+                            {wp.name || `Point ${idx + 1}`}
+                          </span>{" "}
+                          (Lat: {wp.latitude.toFixed(4)}, Lon:{" "}
+                          {wp.longitude.toFixed(4)})
+                          <p className="text-xs text-muted-foreground ml-2">
+                            - Reason: {wp.reason}
+                          </p>
+                          <p className="text-xs text-accent ml-2">
+                            - Weather: Forecast unavailable (placeholder)
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">
+                    {isLoadingWeather
+                      ? "Analyzing route..."
+                      : "Click the button above to let AI identify key weather checkpoints on your route."}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="gear">
+            <Card className="shadow-lg">
+              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <CardTitle className="font-headline">
+                    Gear List for {trip.name}
+                  </CardTitle>
+                  <CardDescription>
+                    Select and manage equipment for this trip. Total weight of
+                    selected gear: {(totalSelectedGearWeight / 1000).toFixed(2)}{" "}
+                    kg
+                  </CardDescription>
+                </div>
+                {gearSelectionChanged && (
+                  <Button
+                    onClick={handleSaveGearSelections}
+                    disabled={isSavingGear}
+                  >
+                    {isSavingGear && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Save Gear Changes
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {isLoadingGear ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-3 text-muted-foreground">
+                      Loading available gear...
+                    </p>
+                  </div>
+                ) : allGearLibrary.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    No gear items available in your library.{" "}
+                    <Link href="/gear" className="text-accent hover:underline">
+                      Add gear to your library
+                    </Link>{" "}
+                    to select for this trip.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 text-primary flex items-center">
+                        <Settings2 className="mr-2 h-5 w-5" />
+                        Available Gear Library
+                      </h3>
+                      <ScrollArea className="h-[500px] border rounded-md p-1 bg-muted/20">
+                        <Accordion
+                          type="multiple"
+                          defaultValue={sortedAvailableCategories}
+                          className="w-full space-y-2 p-2"
+                        >
+                          {sortedAvailableCategories.map((category) => (
+                            <AccordionItem
+                              value={category}
+                              key={`available-${category}`}
+                              className="border bg-background rounded-md shadow-sm"
+                            >
+                              <AccordionTrigger className="px-4 py-3 text-base font-medium text-primary hover:no-underline">
+                                <div className="flex items-center gap-2">
+                                  <Tag className="h-5 w-5" />
+                                  {category} (
+                                  {groupedAvailableGear[category].length})
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-4 pb-3 pt-1">
+                                <div className="space-y-2">
+                                  {groupedAvailableGear[category].map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center space-x-3 p-2 bg-card rounded-md shadow-sm hover:bg-card/80"
+                                    >
+                                      <Checkbox
+                                        id={`gear-select-${item.id}`}
+                                        checked={currentSelectedGearIds.includes(
+                                          item.id
+                                        )}
+                                        onCheckedChange={() =>
+                                          handleToggleGearItemSelection(item.id)
+                                        }
+                                        aria-label={`Select ${item.name}`}
+                                      />
+                                      <div className="flex-shrink-0 w-10 h-10">
+                                        {item.imageUrl ? (
+                                          <Image
+                                            src={item.imageUrl}
+                                            alt={item.name}
+                                            data-ai-hint={
+                                              item["data-ai-hint"] || "gear"
+                                            }
+                                            width={40}
+                                            height={40}
+                                            className="rounded object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center">
+                                            {item.itemType === "container" ? (
+                                              <PackageCheck className="h-5 w-5 text-secondary-foreground" />
+                                            ) : (
+                                              <ListChecks className="h-5 w-5 text-secondary-foreground" />
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <Label
+                                        htmlFor={`gear-select-${item.id}`}
+                                        className="flex-grow cursor-pointer"
+                                      >
+                                        <span className="font-medium text-foreground">
+                                          {item.name}{" "}
+                                          {item.itemType === "container" &&
+                                            "(Bag)"}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground block">
+                                          {item.weight}g -{" "}
+                                          {item.notes || "No notes"}
+                                        </span>
+                                      </Label>
+                                    </div>
+                                  ))}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </ScrollArea>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 text-primary flex items-center">
+                        <ListChecks className="mr-2 h-5 w-5" />
+                        Selected for this Trip ({selectedGearDetails.length})
+                      </h3>
+                      <ScrollArea className="h-[500px] border rounded-md p-1">
+                        {selectedGearDetails.length === 0 ? (
+                          <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
+                            <p className="text-muted-foreground text-center">
+                              No gear selected yet. <br />
+                              Check items from the "Available Gear" list.
+                            </p>
+                          </div>
+                        ) : (
+                          <Accordion
+                            type="multiple"
+                            className="w-full"
+                            defaultValue={topLevelSelectedItems
+                              .filter((i) => i.itemType === "container")
+                              .map((i) => i.id)
+                              .concat(
+                                looseSelectedItems.length > 0
+                                  ? ["loose-items"]
+                                  : []
+                              )}
+                          >
+                            {topLevelSelectedItems
+                              .filter((item) => item.itemType === "container")
+                              .map((containerItem) => (
+                                <AccordionItem
+                                  value={containerItem.id}
+                                  key={`container-${containerItem.id}`}
+                                  className="border-b-0 mb-1"
+                                >
+                                  <Card className="shadow-sm bg-card/50">
+                                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                      <div className="flex items-center gap-3 w-full">
+                                        <Package className="h-5 w-5 text-primary" />
+                                        <span className="font-semibold text-primary">
+                                          {containerItem.name}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground ml-auto mr-2">
+                                          (
+                                          {currentPackedItems[containerItem.id]
+                                            ?.length || 0}{" "}
+                                          items /{" "}
+                                          {currentPackedItems[
+                                            containerItem.id
+                                          ]?.reduce(
+                                            (acc, packedId) =>
+                                              acc +
+                                              (allGearLibrary.find(
+                                                (g) => g.id === packedId
+                                              )?.weight || 0),
+                                            0
+                                          ) || 0}
+                                          g)
+                                        </span>
+                                      </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="px-4 pb-3 pt-1">
+                                      <div className="space-y-2 ml-2 border-l pl-4 py-2">
+                                        {(
+                                          currentPackedItems[containerItem.id] ||
+                                          []
+                                        ).map((packedItemId) => {
+                                          const packedItem = allGearLibrary.find(
+                                            (g) => g.id === packedItemId
+                                          );
+                                          if (!packedItem) return null;
+                                          return (
+                                            <div
+                                              key={packedItemId}
+                                              className="flex items-center justify-between text-sm p-1.5 rounded bg-background/70 hover:bg-background"
+                                            >
+                                              <span className="text-foreground">
+                                                {packedItem.name}{" "}
+                                                <span className="text-xs text-muted-foreground">
+                                                  ({packedItem.weight}g)
+                                                </span>
+                                              </span>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                                onClick={() =>
+                                                  handleUnpackItem(
+                                                    packedItemId,
+                                                    containerItem.id
+                                                  )
+                                                }
+                                              >
+                                                <XCircle size={16} />{" "}
+                                                <span className="sr-only">
+                                                  Unpack
+                                                </span>
+                                              </Button>
+                                            </div>
+                                          );
+                                        })}
+                                        {(!currentPackedItems[containerItem.id] ||
+                                          currentPackedItems[containerItem.id]
+                                            .length === 0) && (
+                                          <p className="text-xs text-muted-foreground italic py-1">
+                                            This bag is empty. Pack items using
+                                            the dropdown on loose items.
+                                          </p>
+                                        )}
+                                      </div>
+                                    </AccordionContent>
+                                  </Card>
+                                </AccordionItem>
+                              ))}
+
+                            {looseSelectedItems.length > 0 && (
+                              <AccordionItem
+                                value="loose-items"
+                                className="border-b-0"
+                              >
+                                <Card className="shadow-sm mt-2">
+                                  <AccordionTrigger className="px-4 py-3 hover:no-underline bg-muted/30 rounded-t-md">
+                                    <div className="flex items-center gap-3 w-full">
+                                      <ListChecks className="h-5 w-5 text-muted-foreground" />
+                                      <span className="font-semibold text-muted-foreground">
+                                        Loose / Unpacked Items
+                                      </span>
+                                      <span className="text-xs text-muted-foreground ml-auto mr-2">
+                                        ({looseSelectedItems.length} items)
+                                      </span>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="px-4 pb-3 pt-2">
+                                    <div className="space-y-2">
+                                      {looseSelectedItems.map((item) => (
+                                        <Card
+                                          key={`loose-${item.id}`}
+                                          className="p-3 shadow-none bg-background/50"
+                                        >
+                                          <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2">
+                                              {item.imageUrl ? (
+                                                <Image
+                                                  src={item.imageUrl}
+                                                  alt={item.name}
+                                                  data-ai-hint={
+                                                    item["data-ai-hint"] ||
+                                                    "bicycle gear"
+                                                  }
+                                                  width={32}
+                                                  height={32}
+                                                  className="rounded object-cover"
+                                                />
+                                              ) : (
+                                                <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
+                                                  <ListChecks className="h-4 w-4 text-secondary-foreground" />
+                                                </div>
+                                              )}
+                                              <div>
+                                                <p className="font-medium text-primary text-sm">
+                                                  {item.name}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground flex items-center">
+                                                  <Weight className="mr-1 h-3 w-3" />
+                                                  {item.weight}g
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="h-8 px-2"
+                                                >
+                                                  <PackagePlus
+                                                    size={16}
+                                                    className="mr-1.5"
+                                                  />{" "}
+                                                  Pack In...
+                                                </Button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                {selectedGearDetails.filter(
+                                                  (g) =>
+                                                    g.itemType === "container" &&
+                                                    g.id !== item.id
+                                                ).length > 0 ? (
+                                                  selectedGearDetails
+                                                    .filter(
+                                                      (g) =>
+                                                        g.itemType ===
+                                                          "container" &&
+                                                        g.id !== item.id
+                                                    )
+                                                    .map((container) => (
+                                                      <DropdownMenuItem
+                                                        key={`pack-into-${container.id}`}
+                                                        onClick={() =>
+                                                          handlePackItem(
+                                                            item.id,
+                                                            container.id
+                                                          )
+                                                        }
+                                                      >
+                                                        <Package
+                                                          size={14}
+                                                          className="mr-2"
+                                                        />{" "}
+                                                        {container.name}
+                                                      </DropdownMenuItem>
+                                                    ))
+                                                ) : (
+                                                  <DropdownMenuItem disabled>
+                                                    No available bags selected
+                                                  </DropdownMenuItem>
+                                                )}
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </div>
+                                        </Card>
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </Card>
+                              </AccordionItem>
+                            )}
+                          </Accordion>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="diary">
+            <Card className="shadow-lg">
+              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <CardTitle className="font-headline">Travel Diary</CardTitle>
+                  <CardDescription>
+                    Record your experiences for each day of the trip.
+                  </CardDescription>
+                </div>
+                {dailyNotesChanged && (
+                  <Button
+                    onClick={handleSaveDailyNotes}
+                    disabled={isSavingNotes}
+                  >
+                    {isSavingNotes && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Save Daily Notes
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[500px] pr-3">
+                  {renderDailyNotesInputs()}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
+
