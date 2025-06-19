@@ -310,7 +310,7 @@ export default function GearPage() {
             <AccordionItem
               value={category}
               key={category}
-              className="border bg-card rounded-lg shadow-sm"
+              className="border bg-card rounded-lg"
             >
               <AccordionTrigger className="px-6 py-4 text-xl font-headline text-primary hover:no-underline">
                 <div className="flex items-center gap-2">

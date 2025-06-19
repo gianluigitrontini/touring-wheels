@@ -115,7 +115,7 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
   
   if (!gpxData && (!weatherWaypoints || weatherWaypoints.length === 0)) {
     return (
-       <div className={`h-[500px] w-full rounded-lg overflow-hidden shadow-md flex items-center justify-center bg-muted ${className}`}>
+       <div className={`h-[500px] w-full rounded-lg overflow-hidden flex items-center justify-center bg-muted ${className}`}>
           <p className="text-muted-foreground">No route data or waypoints to display on the map.</p>
        </div>
     );
@@ -126,7 +126,7 @@ export function MapDisplay({ gpxData, weatherWaypoints, className }: MapDisplayP
 
 
   return (
-    <div className={`h-[500px] w-full rounded-lg overflow-hidden shadow-md ${className}`}>
+    <div className={`h-[500px] w-full rounded-lg overflow-hidden ${className}`}>
       <MapContainer
         key={mapKey} 
         center={defaultCenter} 

@@ -194,7 +194,7 @@ export default function EditTripPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card className="shadow-lg">
+        <Card>
           <CardHeader>
             <CardTitle className="font-headline">Update Trip Details</CardTitle>
             <CardDescription>

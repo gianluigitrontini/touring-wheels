@@ -104,7 +104,7 @@ export default function LandingPage() {
                   alt="Touring Wheels Dashboard"
                   width={800}
                   height={400}
-                  className="w-full rounded-lg shadow-2xl"
+                  className="w-full rounded-lg"
                 />
               </div>
             </div>

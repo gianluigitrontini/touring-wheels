@@ -116,7 +116,7 @@ export default function NewTripPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card className="shadow-lg">
+        <Card>
           <CardHeader>
             <CardTitle className="font-headline">Trip Details</CardTitle>
             <CardDescription>

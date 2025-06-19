@@ -25,7 +25,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+        {/* <Card className="transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary font-headline">
               <MapIcon className="h-6 w-6" /> 
@@ -43,7 +43,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card> */}
 
-        {/* <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+        {/* <Card className="transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary font-headline">
               <ListChecks className="h-6 w-6" />
@@ -61,7 +61,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card> */}
 
-        {/* <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+        {/* <Card className="transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary font-headline">
               <Bike className="h-6 w-6" />
