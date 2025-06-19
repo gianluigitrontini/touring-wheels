@@ -449,7 +449,7 @@ export default function TripDetailPage() {
       );
     }
     return (
-      <ScrollArea className="flex-grow min-h-0 border rounded-md bg-muted/20">
+      <ScrollArea className="flex-grow min-h-0 h-[50vh] border rounded-md bg-muted/20">
         <Accordion
           type="multiple"
           defaultValue={sortedAvailableCategories.map(
