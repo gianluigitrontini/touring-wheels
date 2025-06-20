@@ -1,38 +1,37 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  PlusCircle,
-  Trash2,
-  Edit3,
-  Bike as BikeIcon,
-  Image as ImageIcon,
-} from "lucide-react";
-import type { BikeModel } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import type { BikeModel } from "@/lib/types";
+import {
+  Bike as BikeIcon,
+  Edit3,
+  Image as ImageIcon,
+  PlusCircle,
+  Trash2,
+} from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
 
 const initialMockBikes: BikeModel[] = [
   {

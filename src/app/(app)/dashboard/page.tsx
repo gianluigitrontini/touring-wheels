@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PlusCircle, Bike, ListChecks, MapIcon } from "lucide-react"; // Replaced Bike with MapIcon for My Trips
+import { PlusCircle } from "lucide-react"; // Replaced Bike with MapIcon for My Trips
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -25,62 +25,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* <Card className="transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-primary font-headline">
-              <MapIcon className="h-6 w-6" /> 
-              My Trips
-            </CardTitle>
-            <CardDescription>View and manage your planned bicycle tours.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              You have 0 upcoming trips. Start planning your next adventure!
-            </p>
-            <Button variant="outline" asChild className="w-full sm:w-auto">
-              <Link href="/trips">View All Trips</Link>
-            </Button>
-          </CardContent>
-        </Card> */}
-
-        {/* <Card className="transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-primary font-headline">
-              <ListChecks className="h-6 w-6" />
-              Gear Library
-            </CardTitle>
-            <CardDescription>Organize your touring equipment.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Keep your gear list updated for efficient packing.
-            </p>
-            <Button variant="outline" asChild className="w-full sm:w-auto">
-              <Link href="/gear">Manage Gear</Link>
-            </Button>
-          </CardContent>
-        </Card> */}
-
-        {/* <Card className="transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-primary font-headline">
-              <Bike className="h-6 w-6" />
-              My Bikes
-            </CardTitle>
-            <CardDescription>
-              Manage your collection of bicycles.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Keep track of your bikes and their specifications.
-            </p>
-            <Button variant="outline" asChild className="w-full sm:w-auto">
-              <Link href="/bikes">Manage Bikes</Link>
-            </Button>
-          </CardContent>
-        </Card> */}
-
         <Card className="transition-shadow duration-300 col-span-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary font-headline">

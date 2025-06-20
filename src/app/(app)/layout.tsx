@@ -1,16 +1,16 @@
+import { AppHeader } from "@/components/layout/app-header"; // Import AppHeader
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
-import { AppHeader } from "@/components/layout/app-header"; // Import AppHeader
 import { MountainSnow } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Touring Wheels App",
@@ -30,17 +30,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarNav />
+          <Suspense>
+            <SidebarNav />
+          </Suspense>
         </SidebarContent>
-        <SidebarFooter className="p-4 mt-auto">
-          {/* Placeholder for logout or other footer actions */}
-          {/* 
+        {/* <SidebarFooter className="p-4 mt-auto"> */}
+        {/* Placeholder for logout or other footer actions */}
+        {/* 
             <Button variant="ghost" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center">
              <LogOut className="h-5 w-5" />
              <span className="group-data-[collapsible=icon]:hidden">Logout</span>
            </Button> 
            */}
-        </SidebarFooter>
+        {/* </SidebarFooter> */}
       </Sidebar>
       <SidebarInset className="flex flex-col">
         <AppHeader /> {/* Add the AppHeader here */}
