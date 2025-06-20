@@ -517,17 +517,13 @@ export default function TripDetailPage() {
   const renderSelectedGearContent = () => {
     return (
       <div>
-        <h3 className="text-lg font-semibold mb-3 text-primary flex items-center">
-          <ListChecks className="mr-2 h-5 w-5" />
-          Selected for this Trip ({selectedGearDetails.length})
-        </h3>
         <ScrollArea className="h-[300px] md:h-[500px]">
           {selectedGearDetails.length === 0 ? (
             <div className="h-full flex items-center justify-center bg-muted/20 rounded-md">
               <p className="text-muted-foreground text-center">
                 No gear selected.
                 <br />
-                Click "Add/Remove Gear from Library" to add items.
+                Click "Add/Remove Gear" to add items.
               </p>
             </div>
           ) : (
@@ -572,7 +568,7 @@ export default function TripDetailPage() {
                       </AccordionTrigger>
 
                       <AccordionContent className="px-4 pb-3 pt-1">
-                        <div className="space-y-2 ml-2 border-l pl-4 py-2">
+                        <div className="space-y-2 py-2">
                           {(currentPackedItems[containerItem.id] || []).map(
                             (packedItemId) => {
                               const packedItem = allGearLibrary.find(
@@ -580,57 +576,55 @@ export default function TripDetailPage() {
                               );
                               if (!packedItem) return null;
                               return (
-                                <>
-                                  <Card
-                                    key={`${packedItemId}-${containerItem.id}-selected-packed`}
-                                    className="p-3 shadow-none bg-background/50"
-                                  >
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div className="flex items-center gap-2">
-                                        {packedItem.imageUrl ? (
-                                          <Image
-                                            src={packedItem.imageUrl}
-                                            alt={packedItem.name}
-                                            data-ai-hint={
-                                              packedItem["data-ai-hint"] ||
-                                              "bicycle gear"
-                                            }
-                                            width={32}
-                                            height={32}
-                                            className="rounded object-cover"
-                                          />
-                                        ) : (
-                                          <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
-                                            <ListChecks className="h-4 w-4 text-secondary-foreground" />
-                                          </div>
-                                        )}
-                                        <div>
-                                          <p className="font-medium text-primary text-sm">
-                                            {packedItem.name}
-                                          </p>
-                                          <p className="text-xs text-muted-foreground flex items-center">
-                                            <Weight className="mr-1 h-3 w-3" />
-                                            {packedItem.weight}g
-                                          </p>
+                                <Card
+                                  key={`${packedItemId}-${containerItem.id}-selected-packed`}
+                                  className="p-3 shadow-none bg-background/50"
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                      {packedItem.imageUrl ? (
+                                        <Image
+                                          src={packedItem.imageUrl}
+                                          alt={packedItem.name}
+                                          data-ai-hint={
+                                            packedItem["data-ai-hint"] ||
+                                            "bicycle gear"
+                                          }
+                                          width={32}
+                                          height={32}
+                                          className="rounded object-cover"
+                                        />
+                                      ) : (
+                                        <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
+                                          <ListChecks className="h-4 w-4 text-secondary-foreground" />
                                         </div>
+                                      )}
+                                      <div>
+                                        <p className="font-medium text-primary text-sm">
+                                          {packedItem.name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground flex items-center">
+                                          <Weight className="mr-1 h-3 w-3" />
+                                          {packedItem.weight}g
+                                        </p>
                                       </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                        onClick={() =>
-                                          handleUnpackItem(
-                                            packedItemId,
-                                            containerItem.id
-                                          )
-                                        }
-                                      >
-                                        <XCircle size={16} />{" "}
-                                        <span className="sr-only">Unpack</span>
-                                      </Button>
                                     </div>
-                                  </Card>
-                                </>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                      onClick={() =>
+                                        handleUnpackItem(
+                                          packedItemId,
+                                          containerItem.id
+                                        )
+                                      }
+                                    >
+                                      <XCircle size={16} />{" "}
+                                      <span className="sr-only">Unpack</span>
+                                    </Button>
+                                  </div>
+                                </Card>
                               );
                             }
                           )}
@@ -979,7 +973,7 @@ export default function TripDetailPage() {
                 <DialogTrigger asChild>
                   <Button variant="outline" className="w-full sm:w-auto">
                     <PackagePlus className="mr-2 h-4 w-4" />
-                    Add/Remove Gear from Library
+                    Add/Remove Gear
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[700px] max-h-[80vh] flex flex-col">

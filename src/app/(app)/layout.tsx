@@ -1,13 +1,15 @@
 import { AppHeader } from "@/components/layout/app-header"; // Import AppHeader
 import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
-import { MountainSnow } from "lucide-react";
+import { LogOut, MountainSnow } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -34,18 +36,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <SidebarNav />
           </Suspense>
         </SidebarContent>
-        {/* <SidebarFooter className="p-4 mt-auto"> */}
-        {/* Placeholder for logout or other footer actions */}
-        {/* 
-            <Button variant="ghost" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center">
-             <LogOut className="h-5 w-5" />
-             <span className="group-data-[collapsible=icon]:hidden">Logout</span>
-           </Button> 
-           */}
-        {/* </SidebarFooter> */}
+        <SidebarFooter className="mt-auto">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+          </Button>
+        </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col">
-        <AppHeader /> {/* Add the AppHeader here */}
+        <AppHeader />
         <main className="flex-1 overflow-y-auto bg-background">{children}</main>
       </SidebarInset>
     </SidebarProvider>
